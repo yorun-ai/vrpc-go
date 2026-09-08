@@ -1,5 +1,11 @@
 # vrpc-go
 
+[![License](https://img.shields.io/github/license/yorun-ai/vrpc-go)](LICENSE)
+[![Version](https://img.shields.io/github/v/release/yorun-ai/vrpc-go?label=version&cacheSeconds=300)](https://github.com/yorun-ai/vrpc-go/releases/latest)
+[![Go](https://img.shields.io/github/go-mod/go-version/yorun-ai/vrpc-go)](go.mod)
+[![Go Reference](https://pkg.go.dev/badge/go.yorun.ai/vrpc.svg)](https://pkg.go.dev/go.yorun.ai/vrpc)
+[![CI](https://github.com/yorun-ai/vrpc-go/actions/workflows/ci.yml/badge.svg)](https://github.com/yorun-ai/vrpc-go/actions/workflows/ci.yml)
+
 独立的 Go [vRPC](https://github.com/yorun-ai/vrpc-ts) 客户端，兼容 [Vine Portal](https://github.com/yorun-ai/vine)。
 
 [English](README.md) | **简体中文**
@@ -7,12 +13,18 @@
 - Module：`go.yorun.ai/vrpc`；包名：`vrpc`。
 - 要求 Go 1.27 或更高版本，内置 JSON 和 CBOR/Binary 支持（依赖 fxamacker/cbor）。
 - 不依赖 Vine、应用生命周期、DI、Actor 注册表或框架日志。
-- Apache License 2.0。当前为初始实现，公共 API 尚未发布版本。
+- Apache License 2.0。公共 API 在 v1.0.0 前仍处于稳定化阶段。
 
 ## 试用
 
 克隆 [yorun-ai/vrpc-go](https://github.com/yorun-ai/vrpc-go)，运行 `go test ./...`。
-导入路径 `go.yorun.ai/vrpc` 已映射到本仓库；首个版本发布前，可以在调用方 module 中使用本地替换：
+导入路径 `go.yorun.ai/vrpc` 已映射到本仓库。v0.10.0 发布后可通过以下命令安装：
+
+```sh
+go get go.yorun.ai/vrpc@v0.10.0
+```
+
+发布前试用当前源码，可在调用方 module 中使用本地替换：
 
 ```sh
 go mod edit -require=go.yorun.ai/vrpc@v0.0.0
