@@ -18,10 +18,10 @@ A standalone Go client for [vRPC](https://github.com/yorun-ai/vrpc-ts), compatib
 ## Try the client
 
 Clone [yorun-ai/vrpc-go](https://github.com/yorun-ai/vrpc-go) and run `go test ./...`.
-The import path `go.yorun.ai/vrpc` resolves to this repository. After v0.10.0 is published, install it with:
+The import path `go.yorun.ai/vrpc` resolves to this repository. Install it with:
 
 ```sh
-go get go.yorun.ai/vrpc@v0.10.0
+go get go.yorun.ai/vrpc@v0.11.0
 ```
 
 To try the checkout before publication, use a local replacement from a consuming module:
@@ -246,3 +246,7 @@ GOWORK=off go test -race ./...
 
 The [integration module](test/integration/README.md) keeps Vine out of the library's
 module graph. CI runs both suites. See [AGENTS.md](AGENTS.md) for repository boundaries.
+
+## Skel scalar types
+
+The `go.yorun.ai/vrpc/skel` package provides Decimal, Binary, Timestamp, Duration, LocalDate, LocalTime, LocalDateTime, UUID and JSON types and their constructors. Their JSON and CBOR representations match Vine contracts, including decimal scale and string-based date/time values. Generated API clients can use these types without depending on Vine.

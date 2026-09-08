@@ -18,10 +18,10 @@
 ## 试用
 
 克隆 [yorun-ai/vrpc-go](https://github.com/yorun-ai/vrpc-go)，运行 `go test ./...`。
-导入路径 `go.yorun.ai/vrpc` 已映射到本仓库。v0.10.0 发布后可通过以下命令安装：
+导入路径 `go.yorun.ai/vrpc` 已映射到本仓库。可通过以下命令安装：
 
 ```sh
-go get go.yorun.ai/vrpc@v0.10.0
+go get go.yorun.ai/vrpc@v0.11.0
 ```
 
 发布前试用当前源码，可在调用方 module 中使用本地替换：
@@ -212,3 +212,7 @@ GOWORK=off go test -race ./...
 
 [独立集成测试 module](test/integration/README.md) 将 Vine 隔离在库的依赖图之外。CI 执行两套测试。
 仓库边界见 [AGENTS.md](AGENTS.md)。
+
+## Skel 基础类型
+
+`go.yorun.ai/vrpc/skel` 提供 Decimal、Binary、Timestamp、Duration、LocalDate、LocalTime、LocalDateTime、UUID、JSON 及其构造函数。JSON 和 CBOR 表示与 Vine 契约一致，包括小数精度和日期时间字符串。生成的 API 客户端可使用这些类型，无需依赖 Vine。

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.11.0 - 2026-09-09
+
+- Add `go.yorun.ai/vrpc/skel` with portable scalar types, constructors, and Vine-compatible JSON/CBOR encoding for generated API clients.
+
 ## 0.10.0 - 2026-09-09
 
 - Initial standalone Go vRPC client with Portal credentials, deadlines, trace propagation and structured errors.
