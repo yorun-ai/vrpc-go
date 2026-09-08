@@ -1,5 +1,11 @@
 # vrpc-go
 
+[![License](https://img.shields.io/github/license/yorun-ai/vrpc-go)](LICENSE)
+[![Version](https://img.shields.io/github/v/release/yorun-ai/vrpc-go?label=version&cacheSeconds=300)](https://github.com/yorun-ai/vrpc-go/releases/latest)
+[![Go](https://img.shields.io/github/go-mod/go-version/yorun-ai/vrpc-go)](go.mod)
+[![Go Reference](https://pkg.go.dev/badge/go.yorun.ai/vrpc.svg)](https://pkg.go.dev/go.yorun.ai/vrpc)
+[![CI](https://github.com/yorun-ai/vrpc-go/actions/workflows/ci.yml/badge.svg)](https://github.com/yorun-ai/vrpc-go/actions/workflows/ci.yml)
+
 A standalone Go client for [vRPC](https://github.com/yorun-ai/vrpc-ts), compatible with [Vine Portal](https://github.com/yorun-ai/vine).
 
 **English** | [简体中文](README.zh-CN.md)
@@ -7,12 +13,18 @@ A standalone Go client for [vRPC](https://github.com/yorun-ai/vrpc-ts), compatib
 - Module: `go.yorun.ai/vrpc`; package: `vrpc`.
 - Go 1.27 or later. Built-in JSON and CBOR/Binary support (fxamacker/cbor).
 - No dependency on Vine, application lifecycle, DI, actor registry, or framework logger.
-- Apache License 2.0. Initial implementation; the public API is not yet versioned.
+- Apache License 2.0. The public API is stabilizing before v1.0.0.
 
 ## Try the client
 
 Clone [yorun-ai/vrpc-go](https://github.com/yorun-ai/vrpc-go) and run `go test ./...`.
-The import path `go.yorun.ai/vrpc` resolves to this repository. Until the first version is published, use a local checkout from a consuming module:
+The import path `go.yorun.ai/vrpc` resolves to this repository. After v0.10.0 is published, install it with:
+
+```sh
+go get go.yorun.ai/vrpc@v0.10.0
+```
+
+To try the checkout before publication, use a local replacement from a consuming module:
 
 ```sh
 go mod edit -require=go.yorun.ai/vrpc@v0.0.0
