@@ -6,10 +6,6 @@ import (
 	"strings"
 )
 
-// EncodeCredentials formats Portal actor credentials as "field value, field value".
-// Field names are case-insensitive; ambiguous or unrepresentable entries fail.
-// A nil or empty map produces an empty value for anonymous calls. Credential
-// schema validation and authentication remain the gateway's responsibility.
 func EncodeCredentials(credentials map[string]string) (string, error) {
 	names := make([]string, 0, len(credentials))
 	seen := map[string]bool{}
@@ -33,6 +29,7 @@ func EncodeCredentials(credentials map[string]string) (string, error) {
 	}
 	return strings.Join(parts, ", "), nil
 }
+
 func credentialName(name string) bool {
 	if name == "" {
 		return false

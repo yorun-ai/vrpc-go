@@ -14,23 +14,30 @@ type closeBody struct {
 	closed bool
 }
 
-func (b *closeBody) Close() error { b.closed = true; return nil }
-func TestExchangeOwnsBodyAndPreservesFailureStage(t *testing.T) {
+func (b *closeBody) Close() error {
+	b.closed = true
+	return nil
+}
+func TestRoundTripOwnsBodyAndPreservesFailureStage(t *testing.T) {
 	request, err := NewRequest(t.Context(), "http://example.com/invoke", "/demo.Service/Get", []byte(`{"params":{}}`), ContentTypeJson, ContentTypeJson)
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, failDecode := range []bool{false, true} {
-		body := &closeBody{Reader: strings.NewReader(`{"result":42}`)}
+		body := &closeBody{
+			Reader: strings.NewReader(`{"result":42}`),
+		}
 		prepared := false
 		calls := 0
 		cause := errors.New("decode failed")
-		value, err := Exchange(request, func() { prepared = true }, func(*http.Request) (*http.Response, error) {
+		value, err := RoundTrip(request, func() { prepared = true }, func(*http.Request) (*http.Response, error) {
 			calls++
 			if !prepared {
 				t.Error("request was not prepared")
 			}
-			return &http.Response{Body: body}, nil
+			return &http.Response{
+				Body: body,
+			}, nil
 		}, func(response *http.Response) (int, error) {
 			if failDecode {
 				return 7, cause
@@ -49,7 +56,7 @@ func TestExchangeOwnsBodyAndPreservesFailureStage(t *testing.T) {
 			t.Fatalf("%d %v", value, err)
 		}
 	}
-	_, err = Exchange(request, nil, func(*http.Request) (*http.Response, error) { return nil, context.Canceled }, func(*http.Response) (int, error) { t.Fatal("decoded failed exchange"); return 0, nil })
+	_, err = RoundTrip(request, nil, func(*http.Request) (*http.Response, error) { return nil, context.Canceled }, func(*http.Response) (int, error) { t.Fatal("decoded failed exchange"); return 0, nil })
 	if !errors.Is(err, context.Canceled) {
 		t.Fatal(err)
 	}

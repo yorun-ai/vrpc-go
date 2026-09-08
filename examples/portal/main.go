@@ -4,6 +4,7 @@ package main
 import (
 	"context"
 	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"flag"
 	"fmt"
 	"os"
@@ -25,21 +26,42 @@ func run() error {
 	method := flag.String("method", "", "method name")
 	params := flag.String("params", "{}", "JSON argument object")
 	timeout := flag.Duration("timeout", 30*time.Second, "call timeout")
+	clientName := flag.String("client-name", "", "Client application name")
+	clientVersion := flag.String("client-version", "", "Client semantic version")
+	clientInstanceID := flag.String("client-instance-id", "", "Client instance UUID")
 	flag.Parse()
-	client, err := vrpc.NewClient(vrpc.Options{Endpoint: *endpoint, Timeout: *timeout, Authorization: func(context.Context) (string, error) { return os.Getenv("PORTAL_AUTHORIZATION"), nil }})
+	authorization := map[string]string{}
+	if key := os.Getenv("PORTAL_KEY"); key != "" {
+		authorization["key"] = key
+	}
+
+	client, err := vrpc.NewClient(vrpc.Option{
+		Identity: vrpc.Identity{
+			Name:       *clientName,
+			Version:    *clientVersion,
+			InstanceID: *clientInstanceID,
+		},
+		Endpoint:      *endpoint,
+		Timeout:       *timeout,
+		Authorization: authorization,
+	})
 	if err != nil {
 		return err
 	}
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
-	var result jsontext.Value
-	response, err := client.Call(ctx, *service, *method, jsontext.Value(*params), &result)
+
+	result, response, err := client.InvokeRaw(ctx, *service, *method, jsontext.Value(*params))
 	if response != nil {
-		fmt.Fprintf(os.Stderr, "HTTP=%d status=%s portal-trace-id=%s\n", response.HTTPStatus, response.Status, response.PortalTraceID)
+		fmt.Fprintf(os.Stderr, "HTTP=%d status=%s\n", response.HTTPStatus, response.Status)
 	}
 	if err != nil {
 		return err
 	}
-	fmt.Println(string(result))
+	encoded, err := json.Marshal(result)
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(encoded))
 	return nil
 }

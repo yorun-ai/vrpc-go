@@ -2,10 +2,26 @@ package http
 
 import (
 	"errors"
-	"net/http"
 	"strings"
 	"testing"
 )
+
+func TestRequestContentTypes(t *testing.T) {
+	for _, tt := range []struct {
+		arguments, result   bool
+		contentType, accept string
+	}{
+		{false, false, ContentTypeJson, ContentTypeJson},
+		{true, false, ContentTypeCbor, ContentTypeJson},
+		{false, true, ContentTypeJson, ContentTypeCbor + ", " + ContentTypeJson},
+		{true, true, ContentTypeCbor, ContentTypeCbor + ", " + ContentTypeJson},
+	} {
+		contentType, accept := RequestContentTypes(tt.arguments, tt.result)
+		if contentType != tt.contentType || accept != tt.accept {
+			t.Errorf("flags %v/%v: %q, %q", tt.arguments, tt.result, contentType, accept)
+		}
+	}
+}
 
 func TestReadBodyAcceptsBodyAtLimit(t *testing.T) {
 	body, err := ReadBody(strings.NewReader("12345678"), -1, 8, "request")
@@ -35,27 +51,11 @@ func TestReadBodyRejectsDeclaredLengthBeforeReading(t *testing.T) {
 	}
 }
 
-func TestReadRequestAndResponseBodyLimits(t *testing.T) {
-	request := &http.Request{
-		Body:          http.NoBody,
-		ContentLength: MaxRequestBodyBytes + 1,
-	}
-	if _, err := ReadRequestBody(request); err == nil {
-		t.Fatal("ReadRequestBody() error = nil")
-	}
-
-	response := &http.Response{
-		Body:          http.NoBody,
-		ContentLength: MaxResponseBodyBytes + 1,
-	}
-	if _, err := ReadResponseBody(response); err == nil {
-		t.Fatal("ReadResponseBody() error = nil")
-	}
-}
-
 func TestReadBodyReturnsReadError(t *testing.T) {
 	want := errors.New("read failed")
-	_, err := ReadBody(&errorReader{err: want}, -1, 8, "request")
+	_, err := ReadBody(&errorReader{
+		err: want,
+	}, -1, 8, "request")
 	if !errors.Is(err, want) {
 		t.Fatalf("ReadBody() error = %v, want %v", err, want)
 	}

@@ -1,4 +1,4 @@
-// Package http contains the shared vRPC HTTP wire transport extracted from Vine.
+// Package http contains the shared vRPC HTTP wire transport.
 // Framework metadata, schema selection, actor authorization and error policies
 // are supplied by adapters; this package has no Vine dependencies.
 package http
@@ -6,6 +6,7 @@ package http
 import (
 	"context"
 	"fmt"
+	"io"
 	"mime"
 	"net/http"
 	"regexp"
@@ -53,7 +54,7 @@ const (
 
 var supportedContentTypes = []string{ContentTypeJson, ContentTypeCbor}
 
-// MediaTypeOf extracts a media type, preserving Vine fallback behavior.
+// MediaTypeOf extracts a media type, falling back to the value before a semicolon.
 func MediaTypeOf(value string) string {
 	mediaType, _, err := mime.ParseMediaType(strings.TrimSpace(value))
 	if err == nil {
@@ -199,7 +200,7 @@ type Options struct {
 	Timeout time.Duration
 }
 
-// DecodeFields parses the comma-delimited metadata format used by Vine.
+// DecodeFields parses comma-delimited vRPC metadata.
 func DecodeFields(value string) (map[string]string, error) {
 	fields := map[string]string{}
 	for part := range strings.SplitSeq(value, ",") {
@@ -220,7 +221,7 @@ func DecodeFields(value string) (map[string]string, error) {
 	return fields, nil
 }
 
-// EncodeFields encodes validated metadata fields. Invalid pairs panic, as in Vine.
+// EncodeFields encodes validated metadata fields. Invalid pairs panic.
 func EncodeFields(pairs ...string) string {
 	if len(pairs)%2 != 0 {
 		panic("delimited pairs must be even")
@@ -242,7 +243,9 @@ func EncodeApp(name, version, instanceID string) string {
 }
 
 // EncodeTrace formats validated trace identifiers without owning their lifecycle.
-func EncodeTrace(id, span string) string { return EncodeFields("id", id, "span", span) }
+func EncodeTrace(id, span string) string {
+	return EncodeFields("id", id, "span", span)
+}
 
 // DecodeOptionsFromHeader parses an optional positive timeout.
 func DecodeOptionsFromHeader(header http.Header) (*Options, error) {
@@ -266,7 +269,9 @@ func DecodeOptionsFromHeader(header http.Header) (*Options, error) {
 		return nil, fmt.Errorf("invalid request header %s", HeaderRpcOptions)
 	}
 
-	return &Options{Timeout: timeout}, nil
+	return &Options{
+		Timeout: timeout,
+	}, nil
 }
 
 // EncodeOptionsToHeader encodes a positive timeout when configured.
@@ -287,7 +292,9 @@ func EncodeRequestOptionsToHeader(header http.Header, ctx context.Context) {
 	if timeout <= 0 {
 		return
 	}
-	EncodeOptionsToHeader(header, &Options{Timeout: timeout})
+	EncodeOptionsToHeader(header, &Options{
+		Timeout: timeout,
+	})
 }
 
 // Request path
@@ -302,3 +309,48 @@ func ParseServiceAndMethodFromPath(path string) (serviceName string, methodName 
 	}
 	return ms[1], ms[2], nil
 }
+
+// RequestContentTypes selects Content-Type and Accept from generated method
+// binary flags. Request and result encoding are selected separately.
+func RequestContentTypes(argumentsContainBinary, resultContainsBinary bool) (contentType, accept string) {
+	contentType, accept = ContentTypeJson, ContentTypeJson
+	if argumentsContainBinary {
+		contentType = ContentTypeCbor
+	}
+	if resultContainsBinary {
+		accept = ContentTypeCbor + ", " + ContentTypeJson
+	}
+	return
+}
+
+const (
+	// MaxRequestBodyBytes is the maximum encoded Rpc request body size.
+	MaxRequestBodyBytes int64 = 32 << 20
+	// MaxResponseBodyBytes is the maximum encoded Rpc response body size.
+	MaxResponseBodyBytes int64 = 128 << 20
+)
+
+// ReadBody applies a byte limit to an HTTP body before and during reading.
+func ReadBody(body io.Reader, contentLength int64, limit int64, scope string) ([]byte, error) {
+	if contentLength > limit {
+		return nil, fmt.Errorf("rpc %s body exceeds %d byte limit", scope, limit)
+	}
+	if body == nil {
+		return []byte{}, nil
+	}
+
+	content, err := io.ReadAll(io.LimitReader(body, limit+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(content)) > limit {
+		return nil, fmt.Errorf("rpc %s body exceeds %d byte limit", scope, limit)
+	}
+	return content, nil
+}
+
+// HeaderPortalTraceID carries the Portal trace identifier.
+const HeaderPortalTraceID = "portal-trace-id"
+
+// StatusOK identifies a successful vRPC response.
+const StatusOK = "OK"
