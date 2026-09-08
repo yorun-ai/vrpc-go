@@ -31,6 +31,7 @@ type Decimal struct {
 	decimal.Decimal
 }
 
+// NewDecimal converts value to the Skel decimal representation.
 func NewDecimal(value decimal.Decimal) Decimal {
 	return Decimal{
 		Decimal: value,
@@ -138,12 +139,14 @@ type Timestamp struct {
 	time.Time
 }
 
+// NewTimestamp converts t to the Skel timestamp representation.
 func NewTimestamp(t time.Time) Timestamp {
 	return Timestamp{
 		Time: t.UTC(),
 	}
 }
 
+// NewTimestampNow returns the current UTC timestamp.
 func NewTimestampNow() Timestamp {
 	return NewTimestamp(time.Now())
 }
@@ -199,6 +202,7 @@ type Duration struct {
 	time.Duration
 }
 
+// NewDuration converts d to the Skel duration representation.
 func NewDuration(d time.Duration) Duration {
 	return Duration{
 		Duration: d,
@@ -256,12 +260,14 @@ type LocalDate struct {
 	civil.Date
 }
 
+// NewLocalDate converts date to the Skel local-date representation.
 func NewLocalDate(date civil.Date) LocalDate {
 	return LocalDate{
 		Date: date,
 	}
 }
 
+// NewLocalDateOf extracts the local date from t.
 func NewLocalDateOf(t time.Time) LocalDate {
 	return NewLocalDate(civil.DateOf(t))
 }
@@ -317,12 +323,14 @@ type LocalTime struct {
 	civil.Time
 }
 
+// NewLocalTime converts clock to the Skel local-time representation.
 func NewLocalTime(clock civil.Time) LocalTime {
 	return LocalTime{
 		Time: clock,
 	}
 }
 
+// NewLocalTimeOf extracts the local time from t.
 func NewLocalTimeOf(t time.Time) LocalTime {
 	return NewLocalTime(civil.TimeOf(t))
 }
@@ -378,12 +386,14 @@ type LocalDateTime struct {
 	civil.DateTime
 }
 
+// NewLocalDateTime converts dateTime to the Skel local-date-time representation.
 func NewLocalDateTime(dateTime civil.DateTime) LocalDateTime {
 	return LocalDateTime{
 		DateTime: dateTime,
 	}
 }
 
+// NewLocalDateTimeOf extracts the local date and time from t.
 func NewLocalDateTimeOf(t time.Time) LocalDateTime {
 	return NewLocalDateTime(civil.DateTimeOf(t))
 }
@@ -439,6 +449,7 @@ type UUID struct {
 	uuid.UUID
 }
 
+// NewUUID converts id to the Skel UUID representation.
 func NewUUID(id uuid.UUID) UUID {
 	return UUID{
 		UUID: id,
