@@ -34,3 +34,14 @@ jobs:
         working-directory: integration
     env:
       GOWORK: 'off'
+  required:
+    name: CI / Required Checks
+    if: always()
+    needs: [test, portal]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require all checks to pass
+        env:
+          TEST_RESULT: ${{ needs.test.result }}
+          PORTAL_RESULT: ${{ needs.portal.result }}
+        run: test "$TEST_RESULT" = success && test "$PORTAL_RESULT" = success
