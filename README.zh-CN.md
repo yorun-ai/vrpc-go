@@ -106,6 +106,16 @@ JSON-only client 拒绝意外的 CBOR 响应。压缩由 transport 处理，默�
 远端结果以 `Response.Status` 为准，不依赖消息文本或错误体里的辅助 `Code`。
 `MaxResponseBytes` 默认 16 MiB，限制 transport 解压后的响应体；协议错误文本不包含原始响应体。
 
+## 共享传输层
+
+`transport/http` 从 Vine 原有 HTTP transport 提取，独立客户端和 Vine 框架适配层共用其中的
+协议常量、header 校验、超时处理、JSON/CBOR 原始信封、响应体限制和 HTTP 往返生命周期。
+JSON-only 调用方不需要导入可选的 `transport/http/cbor`。
+
+Vine 保留 `meta`、`MethodInfo`、按 schema 的编解码及校验、框架错误映射和 h2c/mTLS 配置。
+共享信封原样传递已经编码的参数和结果，包括旧版 null 集合编码。
+边界与来源见 [transport README](transport/http/README.md) 和 [NOTICE](NOTICE)。
+
 ## 兼容性与范围
 
 独立集成测试通过 HTTP 调用 Vine v0.15.3 的真实 Portal RpcGW 和认证代码；后端使用进程内 fixture，发现和 schema 使用内存 fixture。
@@ -113,7 +123,7 @@ JSON-only client 拒绝意外的 CBOR 响应。压缩由 transport 处理，默�
 不模拟完整 Hub/Link 部署或后端 mTLS。
 
 首版支持手写请求、结果类型。现有 skelc Go service client 仍依赖 Vine，不能直接传给此客户端；
-生成器适配和 Vine 对本 module 的依赖迁移属于后续工作。本客户端不实现 Portal `/inspect`。
+生成器适配仍属于后续工作；Vine 通过框架适配层使用共享 transport，不依赖独立客户端 API。本客户端不实现 Portal `/inspect`。
 
 ## 开发
 

@@ -1,10 +1,10 @@
 package vrpc
 
 import (
-	"bytes"
 	"context"
+	"errors"
 	"fmt"
-	"io"
+	wire "go.yorun.ai/vrpc/transport/http"
 	"mime"
 	"net/http"
 	"net/url"
@@ -143,7 +143,7 @@ func WithTrace(parent Trace) CallOption {
 // Transport and context failures wrap their causes for errors.Is/errors.As.
 // Client cancellation does not guarantee cancellation of execution behind Portal.
 func (c *Client) Call(ctx context.Context, service, method string, params, result any, options ...CallOption) (*Response, error) {
-	if !pathPattern.MatchString(service+"/"+method) || service == "." || service == ".." {
+	if _, _, err := wire.ParseServiceAndMethodFromPath("/" + service + "/" + method); err != nil || service == "." || service == ".." {
 		return nil, fmt.Errorf("vrpc: invalid service or method name")
 	}
 	call := _CallOptions{timeout: c.timeout}
@@ -164,20 +164,17 @@ func (c *Client) Call(ctx context.Context, service, method string, params, resul
 	if err != nil {
 		return nil, fmt.Errorf("vrpc: encode request: %w", err)
 	}
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, c.endpoint+"/"+service+"/"+method, bytes.NewReader(body))
-	if err != nil {
-		return nil, err
-	}
-	request.Header = c.headers.Clone()
-	if request.Header == nil {
-		request.Header = make(http.Header)
-	}
-	request.Header.Set("Content-Type", c.codec.ContentType())
 	accept := ContentTypeJSON
 	if c.codec.ContentType() != ContentTypeJSON {
 		accept = c.codec.ContentType() + ", " + ContentTypeJSON
 	}
-	request.Header.Set("Accept", accept)
+	request, err := wire.NewRequest(ctx, c.endpoint, "/"+service+"/"+method, body, c.codec.ContentType(), accept)
+	if err != nil {
+		return nil, err
+	}
+	for name, values := range c.headers {
+		request.Header[name] = append([]string(nil), values...)
+	}
 	request.Header.Set(HeaderClient, c.identity)
 	trace, _ := EncodeTrace(call.trace)
 	request.Header.Set(HeaderTrace, trace)
@@ -195,32 +192,33 @@ func (c *Client) Call(ctx context.Context, service, method string, params, resul
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	deadline, _ := ctx.Deadline()
-	request.Header.Set(HeaderOptions, "timeout="+time.Until(deadline).String())
-	response, err := c.http.Do(request)
+	wire.EncodeRequestOptionsToHeader(request.Header, ctx)
+	metadata, err := wire.Exchange(request, nil, c.http.Do, func(response *http.Response) (*Response, error) {
+		metadata := &Response{HTTPStatus: response.StatusCode, Status: response.Header.Get(HeaderStatus), Header: response.Header.Clone(), Trace: call.trace, PortalTraceID: response.Header.Get(HeaderPortalTraceID)}
+		payload, decodeErr := c.decodeResponse(response, metadata, result)
+		if (metadata.Status != "" && metadata.Status != StatusOK) || response.StatusCode < 200 || response.StatusCode >= 300 {
+			return metadata, &InvocationError{Response: metadata, Payload: payload, Cause: decodeErr}
+		}
+		if decodeErr != nil {
+			return metadata, &ProtocolError{Response: metadata, Cause: decodeErr}
+		}
+		if payload != nil {
+			return metadata, &ProtocolError{Response: metadata, Cause: fmt.Errorf("error payload conflicts with OK status")}
+		}
+		return metadata, nil
+	})
+	if decodeErr, ok := errors.AsType[*wire.DecodeError](err); ok {
+		return metadata, decodeErr.Cause
+	}
 	if err != nil {
 		return nil, fmt.Errorf("vrpc: transport: %w", err)
-	}
-	defer response.Body.Close()
-	metadata := &Response{HTTPStatus: response.StatusCode, Status: response.Header.Get(HeaderStatus), Header: response.Header.Clone(), Trace: call.trace, PortalTraceID: response.Header.Get(HeaderPortalTraceID)}
-	payload, decodeErr := c.decodeResponse(response, metadata, result)
-	if (metadata.Status != "" && metadata.Status != StatusOK) || response.StatusCode < 200 || response.StatusCode >= 300 {
-		return metadata, &InvocationError{Response: metadata, Payload: payload, Cause: decodeErr}
-	}
-	if decodeErr != nil {
-		return metadata, &ProtocolError{Response: metadata, Cause: decodeErr}
-	}
-	if payload != nil {
-		return metadata, &ProtocolError{Response: metadata, Cause: fmt.Errorf("error payload conflicts with OK status")}
 	}
 	return metadata, nil
 }
 
 func (c *Client) decodeResponse(response *http.Response, metadata *Response, result any) (*ErrorPayload, error) {
-	for _, name := range []string{HeaderStatus, HeaderServer, "Content-Type"} {
-		if len(response.Header.Values(name)) != 1 || response.Header.Get(name) == "" {
-			return nil, fmt.Errorf("missing or duplicated %s", name)
-		}
+	if err := wire.CheckResponseHeaders(response.Header); err != nil {
+		return nil, err
 	}
 	if !statusPattern.MatchString(metadata.Status) {
 		return nil, fmt.Errorf("invalid status")
@@ -244,12 +242,9 @@ func (c *Client) decodeResponse(response *http.Response, metadata *Response, res
 	if encoding := response.Header.Get("Content-Encoding"); encoding != "" && encoding != "identity" {
 		return nil, fmt.Errorf("unsupported response content encoding %s", encoding)
 	}
-	body, err := io.ReadAll(io.LimitReader(response.Body, c.maxResponseBytes+1))
+	body, err := wire.ReadBody(response.Body, response.ContentLength, c.maxResponseBytes, "response")
 	if err != nil {
 		return nil, err
-	}
-	if int64(len(body)) > c.maxResponseBytes {
-		return nil, fmt.Errorf("response exceeds %d bytes", c.maxResponseBytes)
 	}
 	if metadata.Status != StatusOK || metadata.HTTPStatus < 200 || metadata.HTTPStatus >= 300 {
 		result = nil

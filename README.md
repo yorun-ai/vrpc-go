@@ -126,6 +126,18 @@ not message text or the auxiliary payload's `Code`. `MaxResponseBytes` defaults
 to 16 MiB and limits the body after transport decompression. No response body is
 included in protocol error messages.
 
+## Shared transport
+
+`transport/http` is extracted from Vine's existing HTTP transport. Both the standalone
+client and the Vine framework adapter use its wire constants, header checks,
+timeout handling, raw JSON/CBOR envelopes, body limits, and HTTP exchange lifecycle.
+`transport/http/cbor` remains optional for JSON-only callers.
+
+Vine retains `meta`, `MethodInfo`, per-schema encoding and validation, framework
+error mapping, and h2c/mTLS configuration. Encoded arguments and results pass through
+the shared envelopes unchanged, including legacy null-collection profiles. See
+[the transport boundary](transport/http/README.md) and [NOTICE](NOTICE) for provenance.
+
 ## Compatibility and scope
 
 Tests exercise real Portal RpcGW and authentication code from Vine v0.15.3 over
@@ -136,8 +148,8 @@ simulate a complete deployed Hub/Link cluster or backend mTLS.
 
 This first version supports hand-written request/result types. Existing skelc Go
 service clients still depend on Vine and cannot be plugged into this client
-unchanged. Generator adaptation and migrating Vine to depend on this module are
-separate follow-up work. The client does not implement Portal `/inspect`.
+unchanged. Generator adaptation remains follow-up work; Vine consumes the shared transport
+through its framework adapter, rather than the standalone client API. The client does not implement Portal `/inspect`.
 
 ## Development
 

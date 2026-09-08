@@ -2,6 +2,7 @@
 
 - This repository owns the standalone Go vRPC client, module `go.yorun.ai/vrpc`.
 - Keep the root package standard-library-only. Optional CBOR support lives in `codec/cbor`.
+- `transport/http` owns the wire implementation extracted from Vine; both clients and framework adapters must use it. Keep schema encoding and framework metadata in the adapter.
 - Never import Vine. Check wire compatibility against Vine and vrpc-ts when changing the protocol.
 - Use Go 1.27, `encoding/json/v2`, `Rpc` in identifiers, and `_` prefixes for unexported production types.
 - Public APIs need GoDoc. Preserve context cancellation and deadlines; do not add invocation retries.

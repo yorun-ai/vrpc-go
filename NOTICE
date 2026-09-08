@@ -1,0 +1,7 @@
+vrpc-go
+Copyright 2026 The vrpc-go contributors
+
+transport/http and transport/http/cbor contain code extracted and adapted from Vine:
+https://github.com/yorun-ai/vine
+Copyright 2026 Cartopeira Pte. Ltd.
+Licensed under the Apache License, Version 2.0.

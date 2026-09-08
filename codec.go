@@ -1,10 +1,9 @@
 package vrpc
 
 import (
-	"bytes"
-	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"fmt"
+	wire "go.yorun.ai/vrpc/transport/http"
 )
 
 // Codec encodes request envelopes and decodes response envelopes.
@@ -29,35 +28,38 @@ func (JSONCodec) EncodeRequest(params any) ([]byte, error) {
 	if params == nil {
 		params = struct{}{}
 	}
-	return json.Marshal(struct {
-		Params any `json:"params"`
-	}{params})
+	encoded, err := json.Marshal(params)
+	if err != nil {
+		return nil, err
+	}
+	return wire.EncodeJSONRequest(encoded)
 }
 
 // DecodeResponse decodes the vRPC envelope and an optional typed result.
 func (JSONCodec) DecodeResponse(data []byte, result any) (*ErrorPayload, error) {
-	var envelope struct {
-		Result jsontext.Value `json:"result"`
-		Error  jsontext.Value `json:"error"`
-	}
-	if err := json.Unmarshal(data, &envelope); err != nil {
+	envelope, err := wire.DecodeJSONResponse(data)
+	if err != nil {
 		return nil, err
 	}
-	if len(envelope.Result) == 0 && len(envelope.Error) == 0 {
+	return decodePayload(envelope, result)
+}
+
+func decodePayload(envelope *wire.ResponsePayload, result any) (*ErrorPayload, error) {
+	if len(envelope.ResultBytes) == 0 && len(envelope.ErrorBytes) == 0 {
 		return nil, fmt.Errorf("missing response envelope")
 	}
-	if len(envelope.Error) > 0 && !bytes.Equal(bytes.TrimSpace(envelope.Error), []byte("null")) {
+	if !wire.IsEmptyErrorPayload(envelope.ErrorBytes) {
 		var payload ErrorPayload
-		if err := json.Unmarshal(envelope.Error, &payload); err != nil {
+		if err := envelope.Unmarshal(envelope.ErrorBytes, &payload); err != nil {
 			return nil, err
 		}
 		return &payload, nil
 	}
-	if len(envelope.Result) == 0 {
+	if len(envelope.ResultBytes) == 0 {
 		return nil, fmt.Errorf("missing result")
 	}
 	if result != nil {
-		return nil, json.Unmarshal(envelope.Result, result)
+		return nil, envelope.Unmarshal(envelope.ResultBytes, result)
 	}
 	return nil, nil
 }

@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	wire "go.yorun.ai/vrpc/transport/http"
 	"regexp"
 	"strings"
 	"uuid"
@@ -11,14 +12,14 @@ import (
 
 // Protocol header names shared by vRPC clients and gateways.
 const (
-	HeaderClient        = "vrpc-client"
-	HeaderTrace         = "vrpc-trace"
-	HeaderOptions       = "vrpc-options"
-	HeaderStatus        = "vrpc-status"
-	HeaderServer        = "vrpc-server"
+	HeaderClient        = wire.HeaderRpcClient
+	HeaderTrace         = wire.HeaderRpcTrace
+	HeaderOptions       = wire.HeaderRpcOptions
+	HeaderStatus        = wire.HeaderRpcStatus
+	HeaderServer        = wire.HeaderRpcServer
 	HeaderPortalTraceID = "portal-trace-id"
-	ContentTypeJSON     = "application/vrpc+json"
-	ContentTypeCBOR     = "application/vrpc+cbor"
+	ContentTypeJSON     = wire.ContentTypeJson
+	ContentTypeCBOR     = wire.ContentTypeCbor
 	StatusOK            = "OK"
 )
 
@@ -32,7 +33,6 @@ type Identity struct {
 var namePattern = regexp.MustCompile(`^[a-z]+(?:\.[a-z]+)*$`)
 var versionPattern = regexp.MustCompile(`^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$`)
 var statusPattern = regexp.MustCompile(`^[A-Z][A-Z0-9_]*$`)
-var pathPattern = regexp.MustCompile(`^[A-Za-z0-9_.]+/[A-Za-z0-9_]+$`)
 
 // EncodeIdentity validates and encodes a vRPC instance identity.
 func EncodeIdentity(identity Identity) (string, error) {
@@ -51,7 +51,7 @@ func EncodeIdentity(identity Identity) (string, error) {
 	if _, err := uuid.Parse(identity.InstanceID); err != nil {
 		return "", fmt.Errorf("vrpc: invalid instance UUID: %w", err)
 	}
-	return "name=" + identity.Name + ",version=" + identity.Version + ",instanceId=" + identity.InstanceID, nil
+	return wire.EncodeApp(identity.Name, identity.Version, identity.InstanceID), nil
 }
 
 // DecodeIdentity validates a vrpc-client or vrpc-server header.
@@ -65,19 +65,7 @@ func DecodeIdentity(value string) (Identity, error) {
 	return identity, err
 }
 
-func decodeFields(value string) (map[string]string, error) {
-	fields := map[string]string{}
-	for part := range strings.SplitSeq(value, ",") {
-		key, value, ok := strings.Cut(part, "=")
-		key = strings.TrimSpace(key)
-		value = strings.TrimSpace(value)
-		if !ok || key == "" || value == "" || fields[key] != "" {
-			return nil, fmt.Errorf("vrpc: malformed metadata header")
-		}
-		fields[key] = value
-	}
-	return fields, nil
-}
+func decodeFields(value string) (map[string]string, error) { return wire.DecodeFields(value) }
 
 // Trace contains a vRPC trace ID and span ID as lowercase hexadecimal strings.
 type Trace struct {
@@ -96,7 +84,7 @@ func EncodeTrace(trace Trace) (string, error) {
 	if !validHex(trace.ID, 32) || !validHex(trace.Span, 16) {
 		return "", fmt.Errorf("vrpc: invalid trace or span ID")
 	}
-	return "id=" + trace.ID + ",span=" + trace.Span, nil
+	return wire.EncodeTrace(trace.ID, trace.Span), nil
 }
 
 func validHex(value string, length int) bool {
