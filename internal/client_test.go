@@ -515,7 +515,7 @@ func TestFixedAuthorization(t *testing.T) {
 			}
 			info := testMethodInfo(t, nil, "demo.Service", "Get")
 			for range 2 {
-				if _, _, err := client.Invoke[struct{}](t.Context(), info, nil); err != nil {
+				if _, _, err := client.InvokeAs[struct{}](t.Context(), info, nil); err != nil {
 					t.Fatal(err)
 				}
 			}

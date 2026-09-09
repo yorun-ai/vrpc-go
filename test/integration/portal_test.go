@@ -218,7 +218,7 @@ func TestPortalConformance(t *testing.T) {
 					Data []byte `json:"data"`
 					ID   int64  `json:"id"`
 				}
-				result, response, err := client.Invoke[resultType](t.Context(), registeredMethod(t, registry, method), params)
+				result, response, err := client.InvokeAs[resultType](t.Context(), registeredMethod(t, registry, method), params)
 				if err != nil || result.ID != params.ID || !bytes.Equal(result.Data, params.Data) {
 					t.Fatalf("%s result=%+v response=%+v err=%v", method, result, response, err)
 				}
@@ -226,12 +226,12 @@ func TestPortalConformance(t *testing.T) {
 					t.Error("missing Portal trace")
 				}
 			}
-			_, response, err := client.Invoke[struct{}](t.Context(), registeredMethod(t, registry, "Fail"), nil)
+			_, response, err := client.InvokeAs[struct{}](t.Context(), registeredMethod(t, registry, "Fail"), nil)
 			var remote *vrpc.InvocationError
 			if !errors.As(err, &remote) || response.Status != "NOT_FOUND" || response.HTTPStatus != 404 || remote.Payload.Reason != "gone" {
 				t.Fatalf("business error: %+v %v", response, err)
 			}
-			_, response, err = client.Invoke[struct{}](t.Context(), registeredMethod(t, registry, "Get"), nil, vrpc.WithTimeout(121*time.Second))
+			_, response, err = client.InvokeAs[struct{}](t.Context(), registeredMethod(t, registry, "Get"), nil, vrpc.WithTimeout(121*time.Second))
 			if !errors.As(err, &remote) || response.Status != "INVALID_REQUEST" {
 				t.Fatalf("gateway timeout limit: %+v %v", response, err)
 			}
@@ -310,12 +310,12 @@ func TestPortalConformance(t *testing.T) {
 				Data []byte `json:"data"`
 				ID   int64  `json:"id"`
 			}
-			result, response, err := client.Invoke[resultType](t.Context(), registeredMethod(t, registry, method), params)
+			result, response, err := client.InvokeAs[resultType](t.Context(), registeredMethod(t, registry, method), params)
 			if err != nil || result.ID != params.ID || !bytes.Equal(result.Data, params.Data) {
 				t.Fatalf("registered %s: %+v, %+v, %v", method, result, response, err)
 			}
 		}
-		_, response, err := client.Invoke[struct{}](t.Context(), registeredMethod(t, registry, "Fail"), nil)
+		_, response, err := client.InvokeAs[struct{}](t.Context(), registeredMethod(t, registry, "Fail"), nil)
 		var remote *vrpc.InvocationError
 		if !errors.As(err, &remote) || response.Status != "NOT_FOUND" || remote.Payload.Reason != "gone" {
 			t.Fatalf("registered error: %+v, %v", response, err)
@@ -336,7 +336,7 @@ func TestPortalConformance(t *testing.T) {
 				"Authorization": []string{credential},
 			},
 		})
-		_, response, err := client.Invoke[struct{}](t.Context(), registeredMethod(t, registry, "Secure"), params)
+		_, response, err := client.InvokeAs[struct{}](t.Context(), registeredMethod(t, registry, "Secure"), params)
 		var remote *vrpc.InvocationError
 		if !errors.As(err, &remote) || response.Status != "UNAUTHORIZED" {
 			t.Fatalf("credential rejection: %+v %v", response, err)

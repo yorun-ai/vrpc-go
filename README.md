@@ -21,7 +21,7 @@ Clone [yorun-ai/vrpc-go](https://github.com/yorun-ai/vrpc-go) and run `go test .
 The import path `go.yorun.ai/vrpc` resolves to this repository. Install it with:
 
 ```sh
-go get go.yorun.ai/vrpc@v0.11.0
+go get go.yorun.ai/vrpc@v0.12.0
 ```
 
 To try the checkout before publication, use a local replacement from a consuming module:
@@ -65,18 +65,18 @@ if !ok {
 type User struct {
     Name string `json:"name"`
 }
-result, metadata, err := client.Invoke[User](ctx, methodInfo,
+result, metadata, err := client.InvokeAs[User](ctx, methodInfo,
     struct { ID int64 `json:"id"` }{ID: 42})
 ```
 
-`client.Invoke[T]` returns the decoded result, response metadata and an error.
-Use `client.Invoke[struct{}]` for methods without a result.
+`client.InvokeAs[T]` returns the decoded result, response metadata and an error.
+Use `client.InvokeAs[struct{}]` for methods without a result.
 
 `client.InvokeRaw(ctx, service, method, params, options...)` invokes an unregistered
 method using JSON and returns `(any, *ResponseMetadata, error)`. JSON objects decode
 to `map[string]any`, arrays to `[]any`, and numbers to `float64`.
 
-On failure, `Invoke[T]` returns the zero value of `T` and `InvokeRaw` returns nil; metadata remains available
+On failure, `InvokeAs[T]` returns the zero value of `T` and `InvokeRaw` returns nil; metadata remains available
 when an HTTP response was received.
 
 Import `context`, `fmt` and `go.yorun.ai/vrpc`. The example uses the caller's `ctx` and `token`.
@@ -147,7 +147,7 @@ func init() {
 ```
 
 Resolve `MethodInfo` once with `GetMethodInfo`, check the returned boolean, and pass
-the descriptor directly to `client.Invoke[T](ctx, methodInfo, params, options...)`.
+the descriptor directly to `client.InvokeAs[T](ctx, methodInfo, params, options...)`.
 Generated clients can retain it after package initialization. A descriptor contains
 the service name, method name, invocation path and binary flags. Invocations do not
 look up the registry; an empty descriptor is rejected before sending a request.

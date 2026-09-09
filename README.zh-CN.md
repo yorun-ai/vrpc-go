@@ -21,7 +21,7 @@
 导入路径 `go.yorun.ai/vrpc` 已映射到本仓库。可通过以下命令安装：
 
 ```sh
-go get go.yorun.ai/vrpc@v0.11.0
+go get go.yorun.ai/vrpc@v0.12.0
 ```
 
 发布前试用当前源码，可在调用方 module 中使用本地替换：
@@ -65,7 +65,7 @@ if !ok {
 type User struct {
     Name string `json:"name"`
 }
-result, metadata, err := client.Invoke[User](ctx, methodInfo,
+result, metadata, err := client.InvokeAs[User](ctx, methodInfo,
     struct { ID int64 `json:"id"` }{ID: 42})
 ```
 
@@ -83,13 +83,13 @@ go run ./examples/portal -endpoint https://api.example.com/invoke \
   -service demo.UserService -method Get -params '{"id":42}'
 ```
 
-`client.Invoke[T]` 返回业务结果、响应元数据和错误；无返回值的方法使用 `client.Invoke[struct{}]`。
+`client.InvokeAs[T]` 返回业务结果、响应元数据和错误；无返回值的方法使用 `client.InvokeAs[struct{}]`。
 
 `client.InvokeRaw(ctx, service, method, params, options...)` 无需注册方法，使用 JSON
 调用并返回 `(any, *ResponseMetadata, error)`。JSON 对象解码为 `map[string]any`，
 数组为 `[]any`，数字为 `float64`。
 
-失败时 `Invoke[T]` 返回 `T` 的零值，`InvokeRaw` 返回 nil；收到 HTTP 响应时仍保留元数据。
+失败时 `InvokeAs[T]` 返回 `T` 的零值，`InvokeRaw` 返回 nil；收到 HTTP 响应时仍保留元数据。
 
 ## 配置与行为
 
@@ -135,7 +135,7 @@ func init() {
 ```
 
 通过 `GetMethodInfo` 获取一次方法描述，检查返回的布尔值，再直接调用
-`client.Invoke[T](ctx, methodInfo, params, options...)`。生成客户端可以在包初始化后保存它。
+`client.InvokeAs[T](ctx, methodInfo, params, options...)`。生成客户端可以在包初始化后保存它。
 描述包含服务名、方法名、请求路径和 binary 标志；调用时不再查询 registry，空描述会在发送前被拒绝。
 
 请求与响应独立选择编码：参数含 binary 时使用 CBOR，返回值含 binary 时通过 `Accept`
