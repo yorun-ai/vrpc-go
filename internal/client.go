@@ -120,8 +120,8 @@ func WithTrace(parent Trace) InvokeOption {
 	}
 }
 
-// Invoke returns the typed result and response metadata, or a zero result on failure.
-func (client *Client) Invoke[T any](ctx context.Context, method MethodInfo, params any, options ...InvokeOption) (T, *ResponseMetadata, error) {
+// InvokeAs returns the typed result and response metadata, or a zero result on failure.
+func (client *Client) InvokeAs[T any](ctx context.Context, method MethodInfo, params any, options ...InvokeOption) (T, *ResponseMetadata, error) {
 	var result T
 	response, err := client.invoke(ctx, method, params, &result, options...)
 	if err != nil {
@@ -145,7 +145,7 @@ func (client *Client) InvokeRaw(ctx context.Context, service, method string, par
 			SkelName: method,
 		},
 	}
-	return client.Invoke[any](ctx, info, params, options...)
+	return client.InvokeAs[any](ctx, info, params, options...)
 }
 
 func (c *Client) invoke(ctx context.Context, method MethodInfo, params, result any, options ...InvokeOption) (*ResponseMetadata, error) {

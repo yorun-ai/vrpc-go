@@ -80,35 +80,35 @@ func TestGenericCalls(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	user, _, err := client.Invoke[userResult](t.Context(), methodInfo(t, "user"), nil)
+	user, _, err := client.InvokeAs[userResult](t.Context(), methodInfo(t, "user"), nil)
 	if err != nil || user.ID != 9007199254740993 || user.Name != "Ada" {
 		t.Fatalf("user=%+v err=%v", user, err)
 	}
-	pointer, metadata, err := client.Invoke[*userResult](t.Context(), methodInfo(t, "user"), nil)
+	pointer, metadata, err := client.InvokeAs[*userResult](t.Context(), methodInfo(t, "user"), nil)
 	if err != nil || pointer == nil || *pointer != user || metadata == nil || metadata.HTTPStatus != 200 {
 		t.Fatalf("pointer=%+v metadata=%+v err=%v", pointer, metadata, err)
 	}
-	values, _, err := client.Invoke[[]int](t.Context(), methodInfo(t, "list"), nil)
+	values, _, err := client.InvokeAs[[]int](t.Context(), methodInfo(t, "list"), nil)
 	if err != nil || !slices.Equal(values, []int{1, 2, 3}) {
 		t.Fatalf("values=%v err=%v", values, err)
 	}
-	if _, _, err := client.Invoke[struct{}](t.Context(), methodInfo(t, "void"), nil); err != nil {
+	if _, _, err := client.InvokeAs[struct{}](t.Context(), methodInfo(t, "void"), nil); err != nil {
 		t.Fatal(err)
 	}
 
-	partial, metadata, err := client.Invoke[userResult](t.Context(), methodInfo(t, "invalid"), nil)
+	partial, metadata, err := client.InvokeAs[userResult](t.Context(), methodInfo(t, "invalid"), nil)
 	var protocolErr *vrpc.ProtocolError
 	if partial != (userResult{}) || metadata == nil || !errors.As(err, &protocolErr) {
 		t.Fatalf("partial result leaked: %+v metadata=%+v err=%v", partial, metadata, err)
 	}
-	missing, metadata, err := client.Invoke[*userResult](t.Context(), methodInfo(t, "fail"), nil)
+	missing, metadata, err := client.InvokeAs[*userResult](t.Context(), methodInfo(t, "fail"), nil)
 	var remoteErr *vrpc.InvocationError
 	if missing != nil || metadata == nil || metadata.HTTPStatus != 404 || !errors.As(err, &remoteErr) {
 		t.Fatalf("remote failure: %+v metadata=%+v err=%v", missing, metadata, err)
 	}
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	_, metadata, err = client.Invoke[userResult](ctx, methodInfo(t, "user"), nil)
+	_, metadata, err = client.InvokeAs[userResult](ctx, methodInfo(t, "user"), nil)
 	if !errors.Is(err, context.Canceled) || metadata != nil {
 		t.Fatalf("cancellation: metadata=%+v err=%v", metadata, err)
 	}
@@ -130,7 +130,7 @@ func methodInfo(t *testing.T, name string) vrpc.MethodInfo {
 	return info
 }
 
-func TestInvokeUsesProvidedMethodInfo(t *testing.T) {
+func TestInvokeAsUsesProvidedMethodInfo(t *testing.T) {
 	var calls int
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		expected := rpchttp.ContentTypeJson
@@ -172,12 +172,12 @@ func TestInvokeUsesProvidedMethodInfo(t *testing.T) {
 		spec.Methods[0].SkelName = "changed"
 		spec.Methods[0].ArgumentsContainsBinaryType = !binary
 
-		result, _, err := client.Invoke[int](t.Context(), info, nil)
+		result, _, err := client.InvokeAs[int](t.Context(), info, nil)
 		if err != nil || result != 42 {
 			t.Fatalf("result=%d err=%v", result, err)
 		}
 	}
-	if _, _, err := client.Invoke[int](t.Context(), vrpc.MethodInfo{}, nil); err == nil {
+	if _, _, err := client.InvokeAs[int](t.Context(), vrpc.MethodInfo{}, nil); err == nil {
 		t.Fatal("empty method descriptor accepted")
 	}
 }

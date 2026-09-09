@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.12.0 - 2026-09-09
+
+- Rename the generic client method `Invoke[T]` to `InvokeAs[T]`; update typed calls to use the new name. `InvokeRaw` is unchanged.
+
 ## 0.11.0 - 2026-09-09
 
 - Add `go.yorun.ai/vrpc/skel` with portable scalar types, constructors, and Vine-compatible JSON/CBOR encoding for generated API clients.
