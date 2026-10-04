@@ -1,6 +1,20 @@
 # Changelog
 
-## Unreleased
+## [Unreleased]
+
+## [0.13.0] - 2026-10-04
+
+### Added
+
+- Add `vrpc.MustGetMethodInfo` and `Registry.MustGetMethodInfo` for required method lookups during client initialization. Missing methods panic with the service and method names; successful lookups retain all registered metadata.
+
+### Maintenance
+
+- Remove duplicate main-branch CI runs while retaining client and Portal integration checks on pull requests.
+
+### Upgrade Notes
+
+- This release is additive: existing lookup, registration, invocation and wire behavior remain compatible. Update the runtime dependency before adopting the new helper in generated or hand-written clients.
 
 ## 0.12.0 - 2026-09-09
 
@@ -20,3 +34,6 @@
 - Root API facade over internal client implementation, with no Vine production dependency.
 - Raw Portal CLI example and isolated Portal compatibility tests covering typed and raw invocations.
 - README badges for license, version, Go, package reference and CI.
+
+[Unreleased]: https://github.com/yorun-ai/vrpc-go/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/yorun-ai/vrpc-go/compare/v0.12.0...v0.13.0
