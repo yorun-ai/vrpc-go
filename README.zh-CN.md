@@ -21,7 +21,7 @@
 导入路径 `go.yorun.ai/vrpc` 已映射到本仓库。可通过以下命令安装：
 
 ```sh
-go get go.yorun.ai/vrpc@v0.12.0
+go get go.yorun.ai/vrpc@v0.13.0
 ```
 
 发布前试用当前源码，可在调用方 module 中使用本地替换：
