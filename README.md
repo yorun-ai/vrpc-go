@@ -148,8 +148,13 @@ func init() {
 
 Resolve `MethodInfo` once with `GetMethodInfo`, check the returned boolean, and pass
 the descriptor directly to `client.InvokeAs[T](ctx, methodInfo, params, options...)`.
-Generated clients can retain it after package initialization. A descriptor contains
-the service name, method name, invocation path and binary flags. Invocations do not
+When a missing method is an initialization error, use
+`methodInfo := vrpc.MustGetMethodInfo("demo.Files", "upload")` instead; the registry
+also provides `registry.MustGetMethodInfo`. Both panic with the service and method
+names if the contract is missing.
+
+Generated clients can retain the descriptor after package initialization. A descriptor
+contains the service name, method name, invocation path and binary flags. Invocations do not
 look up the registry; an empty descriptor is rejected before sending a request.
 
 Request and response encoding are selected independently: binary arguments use CBOR;
@@ -168,8 +173,8 @@ for the default registry. Clients can invoke descriptors from either without reg
 configuration. `Register` has no return value and panics on invalid or duplicate
 registration.
 
-The registry and invocation support are implemented here; skelc's existing Go generator
-still targets Vine and needs a separate adaptation to emit these registrations.
+skelc's Go API client generator targets this standalone runtime; generated backend
+packages use Vine.
 
 ## JSON and Binary
 

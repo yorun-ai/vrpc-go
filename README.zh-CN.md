@@ -138,6 +138,10 @@ func init() {
 `client.InvokeAs[T](ctx, methodInfo, params, options...)`。生成客户端可以在包初始化后保存它。
 描述包含服务名、方法名、请求路径和 binary 标志；调用时不再查询 registry，空描述会在发送前被拒绝。
 
+如果缺少方法属于初始化错误，可以直接使用
+`methodInfo := vrpc.MustGetMethodInfo("demo.Files", "upload")`；独立 registry 也提供
+`registry.MustGetMethodInfo`。查不到时，两者都会 panic，并包含服务名和方法名。
+
 请求与响应独立选择编码：参数含 binary 时使用 CBOR，返回值含 binary 时通过 `Accept`
 接受 CBOR 和 JSON；其他情况使用 JSON。两种编码均已内置，无需导入或配置 codec。
 
@@ -152,7 +156,7 @@ func init() {
 
 `Register` 无返回值，对无效或重复注册直接 panic。
 
-本库已实现 registry 和调用支持；skelc 现有 Go 生成器仍面向 Vine，生成上述注册代码需另行适配。
+skelc 的 Go API 客户端生成器使用本独立运行时；生成的后端包使用 Vine。
 
 ## JSON 与 Binary
 
