@@ -90,6 +90,10 @@ func GetMethodInfo(serviceSkelName, methodSkelName string) (MethodInfo, bool) {
 	return defaultRegistry.GetMethodInfo(serviceSkelName, methodSkelName)
 }
 
+func MustGetMethodInfo(serviceSkelName, methodSkelName string) MethodInfo {
+	return defaultRegistry.MustGetMethodInfo(serviceSkelName, methodSkelName)
+}
+
 // Register validates and snapshots a service before making it visible to callers.
 // Later edits to the input struct or method slice do not alter registered metadata.
 func (r *Registry) Register(spec *ServiceSpec) {
@@ -136,6 +140,15 @@ func (r *Registry) GetMethodInfo(serviceSkelName, methodSkelName string) (Method
 
 	info, ok := r.services[serviceSkelName].methods[methodSkelName]
 	return info, ok
+}
+
+// MustGetMethodInfo returns a registered method, panicking if it is missing.
+func (r *Registry) MustGetMethodInfo(serviceSkelName, methodSkelName string) MethodInfo {
+	info, ok := r.GetMethodInfo(serviceSkelName, methodSkelName)
+	if !ok {
+		panic(fmt.Errorf("vrpc: method not registered: %s/%s", serviceSkelName, methodSkelName))
+	}
+	return info
 }
 
 type _InvokeEncoding struct {

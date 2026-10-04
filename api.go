@@ -78,6 +78,12 @@ func GetMethodInfo(serviceSkelName, methodSkelName string) (MethodInfo, bool) {
 	return internalvrpc.GetMethodInfo(serviceSkelName, methodSkelName)
 }
 
+// MustGetMethodInfo looks up a client method in the default registry.
+// It panics if the service or method is not registered.
+func MustGetMethodInfo(serviceSkelName, methodSkelName string) MethodInfo {
+	return internalvrpc.MustGetMethodInfo(serviceSkelName, methodSkelName)
+}
+
 // EncodeIdentity validates and encodes a client or server instance identity.
 func EncodeIdentity(identity Identity) (string, error) {
 	return internalvrpc.EncodeIdentity(identity)
