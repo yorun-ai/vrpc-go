@@ -11,6 +11,11 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+      - name: Check release automation
+        run: |
+          shellcheck .github/scripts/*.sh
+          bash .github/scripts/release_test.sh
+          go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 .github/workflows/*.yml
       - run: test -z "$(gofmt -l .)"
       - run: go test -race ./...
       - run: go vet ./...

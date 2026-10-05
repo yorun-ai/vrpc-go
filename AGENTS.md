@@ -15,3 +15,10 @@
 - Run the separate integration module when changing wire behavior. Only the integration module may replace `go.yorun.ai/vrpc` with `../..`; do not commit machine-specific or Vine source replacements.
 
 - Separate logical phases in long functions with blank lines; keep each operation and its error check together.
+
+## Release Publication
+
+- Prepare the dated CHANGELOG entry in a release PR, pass CI and merge, sync main, then push the reviewed version tag. A `v*` tag triggers the Release workflow.
+- Validate tag identity and main ancestry, run standalone tests and vet, then create GitHub Release using the corresponding CHANGELOG notes. No binary archives or integration-module releases are produced.
+- Retry or manually dispatch with the same existing tag after failure. Published Releases are left unchanged; do not move tags. A Go module is available through its tag independently of GitHub Release, so tag publication is not reversible through Release cleanup.
+- See CONTRIBUTING.md for checks and publication recovery.
