@@ -1,5 +1,5 @@
 // Package http contains the shared vRPC HTTP wire transport.
-// Framework metadata, schema selection, actor authorization and error policies
+// Framework metadata, contract selection, actor authorization and error policies
 // are supplied by adapters; this package has no Vine dependencies.
 package http
 

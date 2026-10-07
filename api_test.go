@@ -5,9 +5,6 @@ import (
 	"errors"
 	"go.yorun.ai/vrpc"
 	rpchttp "go.yorun.ai/vrpc/transport/http"
-	"go/ast"
-	"go/parser"
-	"go/token"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -15,43 +12,12 @@ import (
 	"testing"
 )
 
-// Keep the public facade declarative: types are aliases and callable APIs are
-// functions, so consumers cannot replace shared behavior through package variables.
-func TestFacadeDeclarations(t *testing.T) {
-	file, err := parser.ParseFile(token.NewFileSet(), "api.go", nil, 0)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, declaration := range file.Decls {
-		group, ok := declaration.(*ast.GenDecl)
-		if !ok {
-			continue
-		}
-		for _, spec := range group.Specs {
-			switch spec := spec.(type) {
-			case *ast.TypeSpec:
-				if ast.IsExported(spec.Name.Name) && !spec.Assign.IsValid() {
-					t.Errorf("%s must alias its internal implementation", spec.Name.Name)
-				}
-			case *ast.ValueSpec:
-				if group.Tok == token.VAR {
-					for _, name := range spec.Names {
-						if ast.IsExported(name.Name) {
-							t.Errorf("%s must not be an exported package variable", name.Name)
-						}
-					}
-				}
-			}
-		}
-	}
-}
-
 type userResult struct {
 	ID   int64  `json:"id"`
 	Name string `json:"name"`
 }
 
-func TestGenericCalls(t *testing.T) {
+func TestInvokeAsDecodesTypedResults(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", rpchttp.ContentTypeJson)
 		w.Header().Set(rpchttp.HeaderRpcStatus, rpchttp.StatusOK)

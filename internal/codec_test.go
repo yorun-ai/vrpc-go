@@ -13,12 +13,12 @@ import (
 	"testing"
 )
 
-func TestBinaryAndJSONFallback(t *testing.T) {
-	for _, fallback := range []bool{false, true} {
+func TestCBORInvocationDecodesResponseContentType(t *testing.T) {
+	for _, jsonResponse := range []bool{false, true} {
 		t.Run(map[bool]string{
-			false: "binary",
-			true:  "json fallback",
-		}[fallback], func(t *testing.T) {
+			false: "cbor response",
+			true:  "json response",
+		}[jsonResponse], func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.Header.Get("Content-Type") != rpchttp.ContentTypeCbor {
 					t.Error("expected cbor request")
@@ -40,7 +40,7 @@ func TestBinaryAndJSONFallback(t *testing.T) {
 				}
 				w.Header().Set(rpchttp.HeaderRpcStatus, "OK")
 				w.Header().Set(rpchttp.HeaderRpcServer, "name=demo.server,version=1.0.0,instanceId=123e4567-e89b-12d3-a456-426614174000")
-				if fallback {
+				if jsonResponse {
 					w.Header().Set("Content-Type", rpchttp.ContentTypeJson)
 					_, _ = io.WriteString(w, `{"result":{"data":"AP8=","amount":"1.00"},"error":null}`)
 					return
@@ -95,7 +95,7 @@ func TestBinaryAndJSONFallback(t *testing.T) {
 		})
 	}
 }
-func TestMalformedCBOR(t *testing.T) {
+func TestCodecDecodeCBORResponse(t *testing.T) {
 	codec := _Codec(true)
 	for _, data := range [][]byte{nil, {0xf6}, {0xa0}, {0xa2, 0x66, 'r', 'e', 's', 'u', 'l', 't', 0x01, 0x66, 'r', 'e', 's', 'u', 'l', 't', 0x02}} {
 		if _, err := codec.DecodeResponse(data, nil); err == nil {

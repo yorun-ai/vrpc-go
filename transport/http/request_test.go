@@ -7,8 +7,8 @@ import (
 	"testing"
 )
 
-func TestJSONRequestPreservesRawSchemaEncoding(t *testing.T) {
-	raw := []byte(`{"legacy":null,"current":[],"id":9007199254740993}`)
+func TestJSONRequestPreservesEncodedParams(t *testing.T) {
+	raw := []byte(`{"nullable":null,"items":[],"id":9007199254740993}`)
 	body, err := EncodeJSONRequest(raw)
 	if err != nil {
 		t.Fatal(err)
@@ -19,7 +19,7 @@ func TestJSONRequestPreservesRawSchemaEncoding(t *testing.T) {
 	}
 }
 
-func TestCBORRequestPreservesRawSchemaEncoding(t *testing.T) {
+func TestCBORRequestPreservesEncodedParams(t *testing.T) {
 	raw, err := cbor.Marshal(map[int64]any{
 		9007199254740993: []byte{0, 255},
 		1:                nil,

@@ -16,7 +16,7 @@ type JSONRequest struct {
 	Params jsontext.Value `json:"params"`
 }
 
-// EncodeJSONRequest wraps already-encoded arguments without changing schema encoding.
+// EncodeJSONRequest wraps already-encoded arguments without re-encoding them.
 func EncodeJSONRequest(params []byte) ([]byte, error) {
 	return json.Marshal(&JSONRequest{
 		Params: params,
@@ -40,7 +40,7 @@ type CBORRequest struct {
 	Params cbor.RawMessage `json:"params"`
 }
 
-// EncodeCBORRequest wraps schema-encoded CBOR parameters without modifying their representation.
+// EncodeCBORRequest wraps already-encoded CBOR parameters without modifying their representation.
 func EncodeCBORRequest(params []byte) ([]byte, error) {
 	return cbor.Marshal(&CBORRequest{
 		Params: params,
@@ -64,7 +64,7 @@ func ReadRequestBody(request *http.Request) ([]byte, error) {
 	return ReadBody(request.Body, request.ContentLength, MaxRequestBodyBytes, "request")
 }
 
-// NewRequest assembles the common HTTP invocation from a schema-encoded envelope.
+// NewRequest assembles the common HTTP invocation from an encoded invocation envelope.
 // Adapters supply identity/auth headers after construction. path begins with '/'.
 func NewRequest(ctx context.Context, endpoint, path string, body []byte, contentType, accept string) (*http.Request, error) {
 	request, err := http.NewRequestWithContext(ctx, RequestMethod, endpoint+path, bytes.NewReader(body))

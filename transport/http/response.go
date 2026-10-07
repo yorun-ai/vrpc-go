@@ -10,7 +10,7 @@ import (
 )
 
 // ResponsePayload holds raw result/error bytes and their payload decoder.
-// Schema-aware adapters retain ownership of typed decoding and validation.
+// Framework adapters retain ownership of typed decoding and validation.
 type ResponsePayload struct {
 	ResultBytes []byte
 	ErrorBytes  []byte
@@ -55,7 +55,7 @@ type CBORResponse struct {
 	Error  cbor.RawMessage `json:"error"`
 }
 
-// EncodeCBORResponse wraps schema-encoded CBOR result/error values.
+// EncodeCBORResponse wraps already-encoded CBOR result/error values.
 func EncodeCBORResponse(result, err []byte) ([]byte, error) {
 	return cbor.Marshal(&CBORResponse{
 		Result: result,
