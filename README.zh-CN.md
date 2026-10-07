@@ -185,10 +185,13 @@ fxamacker 也会回退到 `json` tag。返回值含 binary 的方法仍接受 JS
 
 ## 共享传输层
 
-`transport/http` 提供协议常量、header 校验、超时处理、JSON/CBOR 原始信封、
-响应体限制和 HTTP 往返生命周期。JSON 和 CBOR 信封由同一个包提供。
-适配层提供已编码的参数和结果、传输配置，以及应用相关的元数据和错误处理。
-共享信封原样保留已编码的载荷，包括集合编码配置。
+`transport/http` 提供协议常量、header 校验、超时处理、JSON/CBOR 请求与响应编解码、
+消息体限制和 HTTP 往返生命周期。适配层将 Go 值交给 `EncodeRequest` 和 `EncodeResponse`，
+通过 `DecodeRequest` 解码参数，通过 `DecodeResponse` 与 `ResponsePayload.Unmarshal`
+解码结果和错误。这些操作采用固定协议规则：nil 集合编码为空集合，解码拒绝重复键。
+适配层继续负责传输配置、应用元数据和错误策略。
+原始信封辅助函数保留已编码的载荷；`ResponsePayload.EncodeWithError` 替换错误时，
+无需解码和重新编码结果。
 
 ## 兼容性与范围
 
@@ -201,7 +204,7 @@ Vine 通过框架适配层使用共享 transport。本客户端不实现 Portal 
 
 ## 包结构
 
-根目录的 `api.go` 通过类型别名和普通函数转发提供客户端 API。客户端、registry、编码、
+根目录的 `api.go` 通过类型别名和普通函数转发提供客户端 API。客户端、registry、
 凭据和协议元数据的实现位于 `internal`，调用方仍导入 `go.yorun.ai/vrpc`。
 `transport/http` 保持公开，供 Vine 跨模块复用。
 

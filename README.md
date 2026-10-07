@@ -214,11 +214,14 @@ included in protocol error messages.
 ## Shared transport
 
 `transport/http` provides wire constants, header checks, timeout handling,
-raw JSON/CBOR envelopes, body limits and the HTTP exchange lifecycle.
-JSON and CBOR envelopes are provided by the same package.
-Adapters supply encoded arguments and results, transport configuration and
-application-specific metadata and error handling. The shared envelopes preserve
-encoded payloads unchanged, including collection encoding profiles.
+JSON/CBOR request and response codecs, body limits and the HTTP exchange lifecycle.
+Adapters pass Go values to `EncodeRequest` and `EncodeResponse`, decode arguments
+with `DecodeRequest`, and use `DecodeResponse` plus `ResponsePayload.Unmarshal`
+for results and errors. These operations use fixed wire rules: nil collections
+encode as empty collections, and decoding rejects duplicate keys.
+Adapters retain transport configuration, application metadata and error policy.
+Raw envelope helpers preserve encoded payloads; `ResponsePayload.EncodeWithError`
+replaces an error without decoding and re-encoding the result.
 
 ## Compatibility and scope
 
@@ -235,7 +238,7 @@ transport through its framework adapter. The client does not implement Portal `/
 ## Package layout
 
 The root `api.go` exposes the client API through type aliases and ordinary function
-wrappers. Client, registry, codecs, credentials and protocol metadata are implemented
+wrappers. Client, registry, credentials and protocol metadata are implemented
 in `internal`; consumers continue to import `go.yorun.ai/vrpc`.
 `transport/http` remains public for cross-module reuse by Vine.
 

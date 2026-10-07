@@ -2,7 +2,6 @@ package http
 
 import (
 	"encoding/json/jsontext"
-	"encoding/json/v2"
 	"fmt"
 	"net/http"
 
@@ -14,7 +13,57 @@ import (
 type ResponsePayload struct {
 	ResultBytes []byte
 	ErrorBytes  []byte
-	Unmarshal   func([]byte, any) error
+	codec       _Codec
+}
+
+// Unmarshal decodes a result or error using the response's fixed wire rules.
+// The target may be partially populated on error and must then be discarded.
+func (p *ResponsePayload) Unmarshal(data []byte, target any) error {
+	return p.codec.unmarshal(data, target)
+}
+
+// EncodeWithError replaces the error value while preserving the encoded result.
+func (p *ResponsePayload) EncodeWithError(errorValue any) ([]byte, error) {
+	raw, err := p.codec.marshal(errorValue)
+	if err != nil {
+		return nil, err
+	}
+	if p.codec {
+		return EncodeCBORResponse(p.ResultBytes, raw)
+	}
+	return EncodeJSONResponse(p.ResultBytes, raw)
+}
+
+// EncodeResponse encodes the result, error and envelope with the vRPC wire rules.
+// Adapters decide whether a response is successful and supply nil for no error.
+func EncodeResponse(result any, errorValue any, contentType string) ([]byte, error) {
+	codec, err := codecForContentType(contentType)
+	if err != nil {
+		return nil, err
+	}
+
+	raw, err := codec.marshal(result)
+	if err != nil {
+		return nil, err
+	}
+	payload := ResponsePayload{
+		ResultBytes: raw,
+		codec:       codec,
+	}
+	return payload.EncodeWithError(errorValue)
+}
+
+// DecodeResponse extracts raw result/error values and their fixed wire decoder.
+// Adapters decode the required values with ResponsePayload.Unmarshal.
+func DecodeResponse(body []byte, contentType string) (*ResponsePayload, error) {
+	codec, err := codecForContentType(contentType)
+	if err != nil {
+		return nil, err
+	}
+	if codec {
+		return DecodeCBORResponse(body)
+	}
+	return DecodeJSONResponse(body)
 }
 
 // JSONResponse is the raw vRPC JSON response envelope.
@@ -25,7 +74,7 @@ type JSONResponse struct {
 
 // EncodeJSONResponse wraps encoded result/error values without re-encoding them.
 func EncodeJSONResponse(result, err []byte) ([]byte, error) {
-	return json.Marshal(&JSONResponse{
+	return _Codec(false).marshal(&JSONResponse{
 		Result: result,
 		Error:  err,
 	})
@@ -34,13 +83,13 @@ func EncodeJSONResponse(result, err []byte) ([]byte, error) {
 // DecodeJSONResponse extracts raw payloads from a JSON response envelope.
 func DecodeJSONResponse(body []byte) (*ResponsePayload, error) {
 	var payload JSONResponse
-	if err := json.Unmarshal(body, &payload); err != nil {
+	if err := _Codec(false).unmarshal(body, &payload); err != nil {
 		return nil, fmt.Errorf("response body cannot be parsed")
 	}
 	return &ResponsePayload{
 		ResultBytes: payload.Result,
 		ErrorBytes:  payload.Error,
-		Unmarshal:   func(data []byte, target any) error { return json.Unmarshal(data, target) },
+		codec:       false,
 	}, nil
 }
 
@@ -57,27 +106,23 @@ type CBORResponse struct {
 
 // EncodeCBORResponse wraps already-encoded CBOR result/error values.
 func EncodeCBORResponse(result, err []byte) ([]byte, error) {
-	return cbor.Marshal(&CBORResponse{
+	return _Codec(true).marshal(&CBORResponse{
 		Result: result,
 		Error:  err,
 	})
 }
 
-// DecodeCBORResponse extracts a response using the default CBOR decoder.
+// DecodeCBORResponse rejects duplicate envelope keys and provides a decoder
+// that also rejects duplicate keys in the result and error payloads.
 func DecodeCBORResponse(body []byte) (*ResponsePayload, error) {
-	return DecodeCBORResponseWith(body, cbor.Unmarshal)
-}
-
-// DecodeCBORResponseWith allows a caller to use a stricter CBOR decoding profile.
-func DecodeCBORResponseWith(body []byte, unmarshal func([]byte, any) error) (*ResponsePayload, error) {
 	var payload CBORResponse
-	if err := unmarshal(body, &payload); err != nil {
+	if err := _Codec(true).unmarshal(body, &payload); err != nil {
 		return nil, fmt.Errorf("response body cannot be parsed: %w", err)
 	}
 	return &ResponsePayload{
 		ResultBytes: payload.Result,
 		ErrorBytes:  payload.Error,
-		Unmarshal:   unmarshal,
+		codec:       true,
 	}, nil
 }
 

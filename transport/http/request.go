@@ -4,12 +4,52 @@ import (
 	"bytes"
 	"context"
 	"encoding/json/jsontext"
-	"encoding/json/v2"
 	"fmt"
 	"net/http"
 
 	"github.com/fxamacker/cbor/v2"
 )
+
+// EncodeRequest encodes arguments and their envelope with the vRPC wire rules.
+func EncodeRequest(params any, contentType string) ([]byte, error) {
+	codec, err := codecForContentType(contentType)
+	if err != nil {
+		return nil, err
+	}
+
+	raw, err := codec.marshal(params)
+	if err != nil {
+		return nil, err
+	}
+	if codec {
+		return EncodeCBORRequest(raw)
+	}
+	return EncodeJSONRequest(raw)
+}
+
+// DecodeRequest decodes the envelope and arguments, rejecting duplicate keys.
+// The target may be partially populated on error and must then be discarded.
+func DecodeRequest(body []byte, params any, contentType string) error {
+	codec, err := codecForContentType(contentType)
+	if err != nil {
+		return err
+	}
+
+	var raw []byte
+	if codec {
+		raw, err = DecodeCBORRequest(body)
+	} else {
+		raw, err = DecodeJSONRequest(body)
+	}
+	if err != nil {
+		return err
+	}
+
+	if err := codec.unmarshal(raw, params); err != nil {
+		return fmt.Errorf("request params cannot be parsed")
+	}
+	return nil
+}
 
 // JSONRequest is the raw vRPC JSON request envelope.
 type JSONRequest struct {
@@ -18,7 +58,7 @@ type JSONRequest struct {
 
 // EncodeJSONRequest wraps already-encoded arguments without re-encoding them.
 func EncodeJSONRequest(params []byte) ([]byte, error) {
-	return json.Marshal(&JSONRequest{
+	return _Codec(false).marshal(&JSONRequest{
 		Params: params,
 	})
 }
@@ -26,7 +66,7 @@ func EncodeJSONRequest(params []byte) ([]byte, error) {
 // DecodeJSONRequest extracts encoded arguments from a JSON request envelope.
 func DecodeJSONRequest(body []byte) ([]byte, error) {
 	var payload JSONRequest
-	if err := json.Unmarshal(body, &payload); err != nil {
+	if err := _Codec(false).unmarshal(body, &payload); err != nil {
 		return nil, fmt.Errorf("request body cannot be parsed")
 	}
 	if len(payload.Params) == 0 {
@@ -42,15 +82,16 @@ type CBORRequest struct {
 
 // EncodeCBORRequest wraps already-encoded CBOR parameters without modifying their representation.
 func EncodeCBORRequest(params []byte) ([]byte, error) {
-	return cbor.Marshal(&CBORRequest{
+	return _Codec(true).marshal(&CBORRequest{
 		Params: params,
 	})
 }
 
-// DecodeCBORRequest extracts raw parameters from a CBOR request envelope.
+// DecodeCBORRequest extracts raw parameters, rejecting duplicate envelope keys.
+// Callers must also reject duplicate keys when decoding the raw parameters.
 func DecodeCBORRequest(body []byte) ([]byte, error) {
 	var payload CBORRequest
-	if err := cbor.Unmarshal(body, &payload); err != nil {
+	if err := _Codec(true).unmarshal(body, &payload); err != nil {
 		return nil, fmt.Errorf("request body cannot be parsed")
 	}
 	if len(payload.Params) == 0 {
