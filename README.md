@@ -21,7 +21,7 @@ Clone [yorun-ai/vrpc-go](https://github.com/yorun-ai/vrpc-go) and run `go test .
 The import path `go.yorun.ai/vrpc` resolves to this repository. Install it with:
 
 ```sh
-go get go.yorun.ai/vrpc@v0.13.0
+go get go.yorun.ai/vrpc@v0.14.0
 ```
 
 To try the checkout before publication, use a local replacement from a consuming module:
