@@ -4,6 +4,7 @@ import (
 	"time"
 
 	internalvrpc "go.yorun.ai/vrpc/internal"
+	rpchttp "go.yorun.ai/vrpc/transport/http"
 )
 
 // Option configures a standalone client and its transport and credentials.
@@ -25,7 +26,7 @@ type Identity = internalvrpc.Identity
 type Trace = internalvrpc.Trace
 
 // ErrorPayload contains the structured error returned by the remote service.
-type ErrorPayload = internalvrpc.ErrorPayload
+type ErrorPayload = rpchttp.ErrorPayload
 
 // InvocationError preserves a failing remote status and its optional error payload.
 type InvocationError = internalvrpc.InvocationError

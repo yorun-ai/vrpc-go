@@ -21,35 +21,20 @@ jobs:
       - run: go vet ./...
       - name: Check standalone dependency boundary
         run: |
-          dependencies=$(go list -deps ./...)
+          dependencies=$(go list -deps -test ./...)
           if printf '%s\n' "$dependencies" | grep -Eq '^(go\.yorun\.ai/vine|github\.com/yorun-ai/vine)(/|$)'; then
             echo "Standalone client must not depend on Vine" >&2
             exit 1
           fi
     env:
       GOWORK: 'off'
-  portal:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          cache-dependency-path: test/integration/go.sum
-      - run: go test -race ./...
-        working-directory: test/integration
-      - run: go vet ./...
-        working-directory: test/integration
-    env:
-      GOWORK: 'off'
   required:
     name: CI / Required Checks
     if: always()
-    needs: [test, portal]
+    needs: [test]
     runs-on: ubuntu-latest
     steps:
       - name: Require all checks to pass
         env:
           TEST_RESULT: ${{ needs.test.result }}
-          PORTAL_RESULT: ${{ needs.portal.result }}
-        run: test "$TEST_RESULT" = success && test "$PORTAL_RESULT" = success
+        run: test "$TEST_RESULT" = success

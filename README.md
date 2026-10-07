@@ -205,6 +205,9 @@ forward compatibility.
 - Transport/context errors wrap their causes; use `errors.Is` for
   cancellation/deadline errors and `errors.As` for structured errors.
 
+`vrpc.ErrorPayload` aliases the shared `transport/http.ErrorPayload`, containing
+`Code`, `Message`, `Reason`, and `Detail`.
+
 `ResponseMetadata` exposes HTTP status, protocol status, server identity and response headers.
 Read `portal-trace-id` from `ResponseMetadata.Header` when needed. Classify remote outcomes by `ResponseMetadata.Status`,
 not message text or the auxiliary payload's `Code`. The shared transport limits response bodies
@@ -214,29 +217,30 @@ included in protocol error messages.
 ## Shared transport
 
 `transport/http` provides wire constants, header checks, timeout handling,
-raw JSON/CBOR envelopes, body limits and the HTTP exchange lifecycle.
-JSON and CBOR envelopes are provided by the same package.
-Adapters supply encoded arguments and results, transport configuration and
-application-specific metadata and error handling. The shared envelopes preserve
-encoded payloads unchanged, including collection encoding profiles.
+JSON/CBOR request and response codecs, body limits and the HTTP exchange lifecycle.
+Adapters pass Go values to `EncodeRequest` and `EncodeResponse`, with errors represented
+by `*ErrorPayload`. They decode arguments with `DecodeRequest`, and use `DecodeResponse`
+with `ResponsePayload.Unmarshal` for results and `ResponsePayload.DecodeError` for errors.
+These operations use fixed wire rules: nil collections
+encode as empty collections, and decoding rejects duplicate keys.
+Adapters retain transport configuration, application metadata and error policy.
+Raw envelope helpers preserve encoded payloads; `ResponsePayload.EncodeWithError`
+replaces an error without decoding and re-encoding the result.
 
 ## Compatibility and scope
 
-Tests exercise real Portal RpcGW and authentication code from Vine v0.15.3 over
-HTTP, with an in-process backend fixture and in-memory discovery/schema fixtures.
-They cover JSON/CBOR, authenticated and anonymous methods, authentication rejection,
-business errors, trace propagation, and the gateway timeout limit. They do not
-simulate a complete deployed Hub/Link cluster or backend mTLS.
+Tests cover client invocation, headers, errors, cancellation and the shared
+JSON/CBOR wire implementation. Portal integration and gateway policy tests
+belong to Vine.
 
-This first version supports hand-written request/result types. Existing skelc Go
-service clients still depend on Vine and cannot be plugged into this client
-unchanged. Generator adaptation remains follow-up work; Vine consumes the shared transport
-through its framework adapter, rather than the standalone client API. The client does not implement Portal `/inspect`.
+The client supports hand-written request/result types and skelc-generated Go API
+clients. Generated backend service clients use Vine. Vine consumes the shared
+transport through its framework adapter. The client does not implement Portal `/inspect`.
 
 ## Package layout
 
 The root `api.go` exposes the client API through type aliases and ordinary function
-wrappers. Client, registry, codecs, credentials and protocol metadata are implemented
+wrappers. Client, registry, credentials and protocol metadata are implemented
 in `internal`; consumers continue to import `go.yorun.ai/vrpc`.
 `transport/http` remains public for cross-module reuse by Vine.
 
@@ -245,13 +249,11 @@ in `internal`; consumers continue to import `go.yorun.ai/vrpc`.
 ```sh
 GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
-cd test/integration
-GOWORK=off go test -race ./...
 ```
 
-The [integration module](test/integration/README.md) keeps Vine out of the library's
-module graph. CI runs both suites. See [AGENTS.md](AGENTS.md) for repository boundaries.
+CI runs the client and shared transport tests without a Vine dependency.
+See [AGENTS.md](AGENTS.md) for repository boundaries.
 
 ## Skel scalar types
 
-The `go.yorun.ai/vrpc/skel` package provides Decimal, Binary, Timestamp, Duration, LocalDate, LocalTime, LocalDateTime, UUID and JSON types and their constructors. Their JSON and CBOR representations match Vine contracts, including decimal scale and string-based date/time values. Generated API clients can use these types without depending on Vine.
+The `go.yorun.ai/skel/types` (imported as `skeltype`) package provides Decimal, Binary, Timestamp, Duration, LocalDate, LocalTime, LocalDateTime, UUID and JSON types and their constructors. vRPC reuses these types and their JSON/CBOR encodings; `go.yorun.ai/vrpc/skel` is no longer provided. Their representations match Vine contracts, including decimal scale and string-based date/time values. Generated API clients and hand-written callers use the same types without depending on Vine.

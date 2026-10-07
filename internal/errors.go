@@ -1,22 +1,16 @@
 package vrpc
 
-import "fmt"
+import (
+	"fmt"
 
-// ErrorPayload is the auxiliary error object returned by a vRPC service.
-// Status in the response header, rather than Code here, identifies the outcome.
-type ErrorPayload struct {
-	Type    string `json:"type" cbor:"type"`
-	Code    string `json:"code" cbor:"code"`
-	Reason  string `json:"reason" cbor:"reason"`
-	Message string `json:"message" cbor:"message"`
-	Detail  string `json:"detail" cbor:"detail"`
-}
+	rpchttp "go.yorun.ai/vrpc/transport/http"
+)
 
 // InvocationError represents a failing vRPC status or a non-success HTTP status.
 // Payload may be nil. Cause preserves any response decoding failure.
 type InvocationError struct {
 	Metadata *ResponseMetadata
-	Payload  *ErrorPayload
+	Payload  *rpchttp.ErrorPayload
 	Cause    error
 }
 

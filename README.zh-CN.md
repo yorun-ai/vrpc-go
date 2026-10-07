@@ -178,6 +178,9 @@ fxamacker 也会回退到 `json` tag。返回值含 binary 的方法仍接受 JS
 - `*vrpc.ProtocolError` 表示成功响应的协议格式错误。
 - transport 和 context 错误保留原始原因；用 `errors.Is` 判断取消、超时，用 `errors.As` 读取结构化错误。
 
+`vrpc.ErrorPayload` 是共享结构 `transport/http.ErrorPayload` 的别名，包含
+`Code`、`Message`、`Reason`、`Detail`。
+
 `ResponseMetadata` 提供 HTTP 状态、协议状态、server identity 和响应 header。
 需要时可从 `ResponseMetadata.Header` 读取 `portal-trace-id`。
 远端结果以 `ResponseMetadata.Status` 为准，不依赖消息文本或错误体里的辅助 `Code`。
@@ -185,23 +188,26 @@ fxamacker 也会回退到 `json` tag。返回值含 binary 的方法仍接受 JS
 
 ## 共享传输层
 
-`transport/http` 提供协议常量、header 校验、超时处理、JSON/CBOR 原始信封、
-响应体限制和 HTTP 往返生命周期。JSON 和 CBOR 信封由同一个包提供。
-适配层提供已编码的参数和结果、传输配置，以及应用相关的元数据和错误处理。
-共享信封原样保留已编码的载荷，包括集合编码配置。
+`transport/http` 提供协议常量、header 校验、超时处理、JSON/CBOR 请求与响应编解码、
+消息体限制和 HTTP 往返生命周期。适配层将 Go 值交给 `EncodeRequest` 和 `EncodeResponse`，
+其中错误使用 `*ErrorPayload` 表示。通过 `DecodeRequest` 解码参数，通过 `DecodeResponse`
+取得响应，再用 `ResponsePayload.Unmarshal` 解码结果、`ResponsePayload.DecodeError` 解码错误。
+这些操作采用固定协议规则：nil 集合编码为空集合，解码拒绝重复键。
+适配层继续负责传输配置、应用元数据和错误策略。
+原始信封辅助函数保留已编码的载荷；`ResponsePayload.EncodeWithError` 替换错误时，
+无需解码和重新编码结果。
 
 ## 兼容性与范围
 
-独立集成测试通过 HTTP 调用 Vine v0.15.3 的真实 Portal RpcGW 和认证代码；后端使用进程内 fixture，发现和 schema 使用内存 fixture。
-覆盖 JSON/CBOR、匿名和认证接口、认证失败、业务错误、追踪传递及网关超时限制。
-不模拟完整 Hub/Link 部署或后端 mTLS。
+测试覆盖客户端调用、header、错误、取消和共享 JSON/CBOR 协议编解码。
+Portal 集成与网关策略测试由 Vine 负责。
 
-首版支持手写请求、结果类型。现有 skelc Go service client 仍依赖 Vine，不能直接传给此客户端；
-生成器适配仍属于后续工作；Vine 通过框架适配层使用共享 transport，不依赖独立客户端 API。本客户端不实现 Portal `/inspect`。
+本客户端支持手写请求、结果类型和 skelc 生成的 Go API 客户端。生成的后端 service client 使用 Vine。
+Vine 通过框架适配层使用共享 transport。本客户端不实现 Portal `/inspect`。
 
 ## 包结构
 
-根目录的 `api.go` 通过类型别名和普通函数转发提供客户端 API。客户端、registry、编码、
+根目录的 `api.go` 通过类型别名和普通函数转发提供客户端 API。客户端、registry、
 凭据和协议元数据的实现位于 `internal`，调用方仍导入 `go.yorun.ai/vrpc`。
 `transport/http` 保持公开，供 Vine 跨模块复用。
 
@@ -210,13 +216,11 @@ fxamacker 也会回退到 `json` tag。返回值含 binary 的方法仍接受 JS
 ```sh
 GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
-cd test/integration
-GOWORK=off go test -race ./...
 ```
 
-[独立集成测试 module](test/integration/README.md) 将 Vine 隔离在库的依赖图之外。CI 执行两套测试。
+CI 执行客户端和共享传输层测试，不依赖 Vine。
 仓库边界见 [AGENTS.md](AGENTS.md)。
 
 ## Skel 基础类型
 
-`go.yorun.ai/vrpc/skel` 提供 Decimal、Binary、Timestamp、Duration、LocalDate、LocalTime、LocalDateTime、UUID、JSON 及其构造函数。JSON 和 CBOR 表示与 Vine 契约一致，包括小数精度和日期时间字符串。生成的 API 客户端可使用这些类型，无需依赖 Vine。
+`go.yorun.ai/skel/types`（导入别名 `skeltype`）提供 Decimal、Binary、Timestamp、Duration、LocalDate、LocalTime、LocalDateTime、UUID、JSON 及其构造函数。vRPC 直接复用 Skel 的类型及 JSON/CBOR 编解码，不再提供 `go.yorun.ai/vrpc/skel`。这些表示与 Vine 契约一致，包括小数精度和日期时间字符串。生成的 API 客户端与手写调用方使用同一套类型，无需依赖 Vine。

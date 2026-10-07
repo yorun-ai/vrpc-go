@@ -8,3 +8,5 @@ github.com/shopspring/decimal v1.4.0 h1:bxl37RwXBklmTi0C79JfXCEBD1cqqHt0bbgBAGFp
 github.com/shopspring/decimal v1.4.0/go.mod h1:gawqmDU56v4yIKSwfBSFip1HdCCXN8/+DMd9qYNcwME=
 github.com/x448/float16 v0.8.4 h1:qLwI1I70+NjRFUR3zs1JPUCgaCXSh3SW62uAKT1mSBM=
 github.com/x448/float16 v0.8.4/go.mod h1:14CWIYCyZA/cWjXOioeEpHeN/83MdbZDRQHoFcYsOfg=
+go.yorun.ai/skel v0.31.0 h1:XQrET/Gy/ez+vwSu5h8I2Kng1jrXHogZhdO5XkM05Dw=
+go.yorun.ai/skel v0.31.0/go.mod h1:i4Wl+3UTCG+e47pdmK5mgcxujXQGnCSm+5VlSrf84gU=
