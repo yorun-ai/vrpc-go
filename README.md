@@ -229,11 +229,9 @@ replaces an error without decoding and re-encoding the result.
 
 ## Compatibility and scope
 
-Tests exercise real Vine Portal RpcGW and authentication code over HTTP, with an
-in-process backend fixture and in-memory Watch fixtures for descriptors and discovery.
-They cover JSON/CBOR, authenticated and anonymous methods, authentication rejection,
-business errors, trace propagation, and the gateway timeout limit. They do not
-simulate a complete deployed Hub/Link cluster or backend mTLS.
+Tests cover client invocation, headers, errors, cancellation and the shared
+JSON/CBOR wire implementation. Portal integration and gateway policy tests
+belong to Vine.
 
 The client supports hand-written request/result types and skelc-generated Go API
 clients. Generated backend service clients use Vine. Vine consumes the shared
@@ -251,12 +249,10 @@ in `internal`; consumers continue to import `go.yorun.ai/vrpc`.
 ```sh
 GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
-cd test/integration
-GOWORK=off go test -race ./...
 ```
 
-The [integration module](test/integration/README.md) keeps Vine out of the library's
-module graph. CI runs both suites. See [AGENTS.md](AGENTS.md) for repository boundaries.
+CI runs the client and shared transport tests without a Vine dependency.
+See [AGENTS.md](AGENTS.md) for repository boundaries.
 
 ## Skel scalar types
 

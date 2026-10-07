@@ -199,9 +199,8 @@ fxamacker 也会回退到 `json` tag。返回值含 binary 的方法仍接受 JS
 
 ## 兼容性与范围
 
-独立集成测试通过 HTTP 调用 Vine 的真实 Portal RpcGW 和认证代码；后端使用进程内 fixture，descriptor 和服务发现数据由内存 Watch fixture 提供。
-覆盖 JSON/CBOR、匿名和认证接口、认证失败、业务错误、追踪传递及网关超时限制。
-不模拟完整 Hub/Link 部署或后端 mTLS。
+测试覆盖客户端调用、header、错误、取消和共享 JSON/CBOR 协议编解码。
+Portal 集成与网关策略测试由 Vine 负责。
 
 本客户端支持手写请求、结果类型和 skelc 生成的 Go API 客户端。生成的后端 service client 使用 Vine。
 Vine 通过框架适配层使用共享 transport。本客户端不实现 Portal `/inspect`。
@@ -217,11 +216,9 @@ Vine 通过框架适配层使用共享 transport。本客户端不实现 Portal 
 ```sh
 GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
-cd test/integration
-GOWORK=off go test -race ./...
 ```
 
-[独立集成测试 module](test/integration/README.md) 将 Vine 隔离在库的依赖图之外。CI 执行两套测试。
+CI 执行客户端和共享传输层测试，不依赖 Vine。
 仓库边界见 [AGENTS.md](AGENTS.md)。
 
 ## Skel 基础类型
