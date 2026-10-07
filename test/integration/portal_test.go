@@ -5,7 +5,6 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"fmt"
-	rpchttp "go.yorun.ai/vrpc/transport/http"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -14,20 +13,21 @@ import (
 	"time"
 
 	"github.com/fxamacker/cbor/v2"
+	"go.yorun.ai/skel/descriptor"
 	"go.yorun.ai/vine/internal/core/ex"
 	"go.yorun.ai/vine/internal/core/link/ingressinproc"
 	"go.yorun.ai/vine/internal/core/meta"
 	rpcspec "go.yorun.ai/vine/internal/core/rpc/spec"
 	vinehttp "go.yorun.ai/vine/internal/core/rpc/transport/http"
-	"go.yorun.ai/vine/internal/core/skel"
-	"go.yorun.ai/vine/internal/daemon/hub/api/redised"
-	"go.yorun.ai/vine/internal/daemon/portal/src/server/comp/hubredis"
+	"go.yorun.ai/vine/internal/daemon/hub/api/watched"
 	"go.yorun.ai/vine/internal/daemon/portal/src/server/mod/access"
 	"go.yorun.ai/vine/internal/daemon/portal/src/server/mod/epmgr"
 	"go.yorun.ai/vine/internal/daemon/portal/src/server/mod/site/rpcgw"
 	sitespec "go.yorun.ai/vine/internal/daemon/portal/src/server/mod/site/spec"
+	"go.yorun.ai/vine/internal/utilfortest/watchtest"
 	"go.yorun.ai/vine/util/vcode"
 	"go.yorun.ai/vrpc"
+	rpchttp "go.yorun.ai/vrpc/transport/http"
 )
 
 func TestPortalConformance(t *testing.T) {
@@ -110,64 +110,117 @@ func TestPortalConformance(t *testing.T) {
 			write(request.Params, ex.NewOK())
 		}
 	}))
-	t.Cleanup(func() { ingressinproc.Unregister(endpoint) })
-	values := map[string]string{
-		redised.FormatSchemaActorKey("demo.UserActor"): vcode.MustMarshalJsonS(redised.SchemaActor{
-			SkelName: "demo.UserActor", AuthEnabled: true, AuthCredential: &skel.DataSchema{
-				Members: []*skel.MemberSchema{{
-					Name: "key",
-				}},
-			}, AuthInfo: &skel.DataSchema{
-				SkelName: "demo.UserInfo",
-			}, IdentifierField: "id",
-			AuthService: &skel.ServiceSchema{
-				SkelName: "demo.Auth",
-			}, AuthMethod: &skel.MethodSchema{
-				SkelName: "Auth",
+	t.Cleanup(func() {
+		ingressinproc.Unregister(endpoint)
+	})
+	actor := &descriptor.Actor{
+		Name:     "UserActor",
+		SkelName: "demo.UserActor",
+		Vias:     []descriptor.ActorViaKind{descriptor.ActorViaClient},
+		Auth: &descriptor.ActorAuth{
+			Credential: &descriptor.Data{
+				Members: []*descriptor.Member{
+					{
+						Name: "key",
+						Type: &descriptor.Type{
+							Kind:   descriptor.TypeKindScalar,
+							Scalar: descriptor.ScalarString,
+						},
+					},
+				},
 			},
-		}),
-		redised.FormatSchemaServiceKey("demo.Service"): vcode.MustMarshalJsonS(redised.SchemaService{
-			SkelName: "demo.Service", AuthMode: skel.AuthModeNoAuth, Audiences: []*skel.ActorAudienceSchema{{
+			Info: &descriptor.Data{
+				SkelName: "demo.UserInfo",
+			},
+			IdentifierField: "id",
+			Service: &descriptor.Service{
+				Name:     "Auth",
+				SkelName: "demo.Auth",
+				AuthMode: descriptor.AuthModeRequired,
+				Methods: []*descriptor.Method{
+					{
+						Name:              "Auth",
+						SkelName:          "Auth",
+						AuthMode:          descriptor.AuthModeInherit,
+						EffectiveAuthMode: descriptor.AuthModeRequired,
+					},
+				},
+			},
+			MethodName: "Auth",
+		},
+	}
+	service := &descriptor.Service{
+		Name:     "Service",
+		SkelName: "demo.Service",
+		Api:      true,
+		AuthMode: descriptor.AuthModeOptional,
+		Audiences: []*descriptor.ActorAudience{
+			{
 				SkelName: "demo.UserActor",
-			}},
-			Methods: []*skel.MethodSchema{{
-				SkelName: "Get",
-			}, {
-				SkelName: "Secure",
-				AuthMode: skel.AuthModeAuth,
-			}, {
-				SkelName: "Fail",
-			}},
-		}),
+				Via:      descriptor.ActorViaClient,
+			},
+		},
+		Methods: []*descriptor.Method{
+			{
+				Name:              "Get",
+				SkelName:          "Get",
+				AuthMode:          descriptor.AuthModeInherit,
+				EffectiveAuthMode: descriptor.AuthModeOptional,
+			},
+			{
+				Name:              "Secure",
+				SkelName:          "Secure",
+				AuthMode:          descriptor.AuthModeRequired,
+				EffectiveAuthMode: descriptor.AuthModeRequired,
+			},
+			{
+				Name:              "Fail",
+				SkelName:          "Fail",
+				AuthMode:          descriptor.AuthModeInherit,
+				EffectiveAuthMode: descriptor.AuthModeOptional,
+			},
+		},
+	}
+	if err := descriptor.ValidateEffectivePolicy(&descriptor.Domain{
+		Name:     "demo",
+		Actors:   []*descriptor.Actor{actor},
+		Services: []*descriptor.Service{service},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	values := map[string]string{
+		watched.FormatDescriptorActorKey(actor.SkelName):     vcode.MustMarshalJsonS(actor),
+		watched.FormatDescriptorServiceKey(service.SkelName): vcode.MustMarshalJsonS(service),
 	}
 	for _, service := range []string{"demo.Service", "demo.Auth"} {
-		values[redised.FormatRpcServiceRegistrationKey(service, "demo.server", "instance")] = vcode.MustMarshalJsonS(redised.RpcServiceRegistration{
+		values[watched.FormatRpcServiceRegistrationKey(service, "demo.server", "instance")] = vcode.MustMarshalJsonS(watched.RpcServiceRegistration{
 			Endpoint:      endpoint,
 			ServiceName:   service,
 			AppName:       "demo.server",
 			AppInstanceId: "instance",
 		})
 	}
-	redis := hubredis.NewTestClient(values)
+	watch := watchtest.New(t, values)
 	manager := &epmgr.Manager{
 		Context: t.Context(),
-		Redis:   redis,
+		Watch:   watch,
 	}
 	manager.DIInit()
 	admission := &access.Access{
 		Context: t.Context(),
-		Redis:   redis,
+		Watch:   watch,
 		Epmgr:   manager,
 	}
 	admission.DIInit()
-	gateway := rpcgw.New(t.Context(), app, admission, manager, redised.PortalSite{
+	gateway := rpcgw.New(t.Context(), app, admission, manager, watched.PortalSite{
 		Name: "test",
 		Type: "RPCGW",
-		ActorVia: redised.PortalActorVia{
+		ActorVia: watched.PortalActorVia{
 			ActorSkelName: "demo.UserActor",
+			ActorVia:      string(descriptor.ActorViaClient),
 		},
-		RpcgwConfig: &redised.PortalRpcgwConfig{
-			Services: []redised.PortalRpcgwService{{
+		RpcgwConfig: &watched.PortalRpcgwConfig{
+			Services: []watched.PortalRpcgwService{{
 				SkelName: "demo.Service",
 			}},
 		},
@@ -184,7 +237,10 @@ func TestPortalConformance(t *testing.T) {
 	params := struct {
 		Data []byte `json:"data"`
 		ID   int64  `json:"id"`
-	}{[]byte{0, 255}, 9007199254740993}
+	}{
+		Data: []byte{0, 255},
+		ID:   9007199254740993,
+	}
 	for _, binary := range []bool{false, true} {
 		t.Run(fmt.Sprint("binary=", binary), func(t *testing.T) {
 			registry := vrpc.NewRegistry()
@@ -213,12 +269,23 @@ func TestPortalConformance(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			anonymousClient, err := vrpc.NewClient(vrpc.Option{
+				Identity: testClientIdentity(),
+				Endpoint: server.URL + "/invoke",
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
 			for _, method := range []string{"Get", "Secure"} {
 				type resultType struct {
 					Data []byte `json:"data"`
 					ID   int64  `json:"id"`
 				}
-				result, response, err := client.InvokeAs[resultType](t.Context(), registeredMethod(t, registry, method), params)
+				methodClient := client
+				if method == "Get" {
+					methodClient = anonymousClient
+				}
+				result, response, err := methodClient.InvokeAs[resultType](t.Context(), registeredMethod(t, registry, method), params)
 				if err != nil || result.ID != params.ID || !bytes.Equal(result.Data, params.Data) {
 					t.Fatalf("%s result=%+v response=%+v err=%v", method, result, response, err)
 				}
@@ -279,22 +346,25 @@ func TestPortalConformance(t *testing.T) {
 	})
 	t.Run("registered client", func(t *testing.T) {
 		registry := vrpc.NewRegistry()
-		registry.Register(&vrpc.ServiceSpec{SkelName: "demo.Service", Methods: []vrpc.MethodSpec{
-			{
-				SkelName:                    "Get",
-				ArgumentsContainsBinaryType: true,
-				ResultContainsBinaryType:    true,
+		registry.Register(&vrpc.ServiceSpec{
+			SkelName: "demo.Service",
+			Methods: []vrpc.MethodSpec{
+				{
+					SkelName:                    "Get",
+					ArgumentsContainsBinaryType: true,
+					ResultContainsBinaryType:    true,
+				},
+				{
+					SkelName:                    "Secure",
+					ArgumentsContainsBinaryType: true,
+					ResultContainsBinaryType:    true,
+				},
+				{
+					SkelName:                 "Fail",
+					ResultContainsBinaryType: true,
+				},
 			},
-			{
-				SkelName:                    "Secure",
-				ArgumentsContainsBinaryType: true,
-				ResultContainsBinaryType:    true,
-			},
-			{
-				SkelName:                 "Fail",
-				ResultContainsBinaryType: true,
-			},
-		}})
+		})
 		client, err := vrpc.NewClient(vrpc.Option{
 			Identity: testClientIdentity(),
 			Endpoint: server.URL + "/invoke",

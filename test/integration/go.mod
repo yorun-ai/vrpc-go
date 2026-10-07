@@ -5,6 +5,8 @@ go 1.27.0
 
 require (
 	github.com/fxamacker/cbor/v2 v2.9.3
+	github.com/shopspring/decimal v1.4.0
+	go.yorun.ai/skel v0.30.1-0.20261006195103-dedd0501f1ce
 	go.yorun.ai/vine v0.15.3
 	go.yorun.ai/vrpc v0.0.0
 )
@@ -38,7 +40,6 @@ require (
 	github.com/quic-go/quic-go v0.59.1 // indirect
 	github.com/redis/go-redis/v9 v9.22.0 // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect
-	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/spiffe/go-spiffe/v2 v2.8.1 // indirect
 	github.com/tidwall/gjson v1.19.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect

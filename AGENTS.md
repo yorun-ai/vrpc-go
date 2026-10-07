@@ -5,6 +5,7 @@
 - Keep `transport/http` and its CBOR envelopes public so Vine can reuse them across module boundaries.
 - JSON and CBOR are built-in client capabilities. Select encoding from registered method binary flags; do not expose codec configuration or a separate codec package.
 - `transport/http` owns the shared vRPC wire implementation; both clients and framework adapters must use it. Keep schema encoding and framework metadata in the adapter.
+- Reuse `go.yorun.ai/skel/types` (import alias `skeltype`) for Skel scalar values and their JSON/CBOR encodings. Do not reintroduce local scalar definitions or forwarding packages. Client registry specs describe invocation metadata, independently of full language descriptors.
 - Never import Vine. Check wire compatibility against Vine and vrpc-ts when changing the protocol.
 - Use Go 1.27, `encoding/json/v2`, `Rpc` in identifiers, and `_` prefixes for unexported production types.
 - Write function bodies and non-empty struct declarations across multiple lines, including short facade wrappers and getters. Expand all non-empty struct literals with one field per line, including single-field literals and tests.

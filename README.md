@@ -222,16 +222,15 @@ encoded payloads unchanged, including collection encoding profiles.
 
 ## Compatibility and scope
 
-Tests exercise real Portal RpcGW and authentication code from Vine v0.15.3 over
-HTTP, with an in-process backend fixture and in-memory discovery/schema fixtures.
+Tests exercise real Vine Portal RpcGW and authentication code over HTTP, with an
+in-process backend fixture and in-memory Watch fixtures for descriptors and discovery.
 They cover JSON/CBOR, authenticated and anonymous methods, authentication rejection,
 business errors, trace propagation, and the gateway timeout limit. They do not
 simulate a complete deployed Hub/Link cluster or backend mTLS.
 
-This first version supports hand-written request/result types. Existing skelc Go
-service clients still depend on Vine and cannot be plugged into this client
-unchanged. Generator adaptation remains follow-up work; Vine consumes the shared transport
-through its framework adapter, rather than the standalone client API. The client does not implement Portal `/inspect`.
+The client supports hand-written request/result types and skelc-generated Go API
+clients. Generated backend service clients use Vine. Vine consumes the shared
+transport through its framework adapter. The client does not implement Portal `/inspect`.
 
 ## Package layout
 
@@ -254,4 +253,4 @@ module graph. CI runs both suites. See [AGENTS.md](AGENTS.md) for repository bou
 
 ## Skel scalar types
 
-The `go.yorun.ai/vrpc/skel` package provides Decimal, Binary, Timestamp, Duration, LocalDate, LocalTime, LocalDateTime, UUID and JSON types and their constructors. Their JSON and CBOR representations match Vine contracts, including decimal scale and string-based date/time values. Generated API clients can use these types without depending on Vine.
+The `go.yorun.ai/skel/types` (imported as `skeltype`) package provides Decimal, Binary, Timestamp, Duration, LocalDate, LocalTime, LocalDateTime, UUID and JSON types and their constructors. vRPC reuses these types and their JSON/CBOR encodings; `go.yorun.ai/vrpc/skel` is no longer provided. Their representations match Vine contracts, including decimal scale and string-based date/time values. Generated API clients and hand-written callers use the same types without depending on Vine.

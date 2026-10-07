@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"github.com/fxamacker/cbor/v2"
+	"github.com/shopspring/decimal"
+	skeltype "go.yorun.ai/skel/types"
 	rpchttp "go.yorun.ai/vrpc/transport/http"
 	"io"
 	"net/http"
@@ -23,29 +25,31 @@ func TestBinaryAndJSONFallback(t *testing.T) {
 				}
 				var request struct {
 					Params struct {
-						Data  []byte           `cbor:"data"`
-						Items []string         `cbor:"items"`
-						Map   map[int64][]byte `cbor:"map"`
+						Data   []byte           `cbor:"data"`
+						Amount string           `cbor:"amount"`
+						Items  []string         `cbor:"items"`
+						Map    map[int64][]byte `cbor:"map"`
 					} `cbor:"params"`
 				}
 				body, _ := io.ReadAll(r.Body)
 				if err := cbor.Unmarshal(body, &request); err != nil {
 					t.Error(err)
 				}
-				if !bytes.Equal(request.Params.Data, []byte{0, 255}) || request.Params.Items == nil || !bytes.Equal(request.Params.Map[9007199254740993], []byte{42}) {
+				if !bytes.Equal(request.Params.Data, []byte{0, 255}) || request.Params.Amount != "1.00" || request.Params.Items == nil || !bytes.Equal(request.Params.Map[9007199254740993], []byte{42}) {
 					t.Errorf("request=%+v", request)
 				}
 				w.Header().Set(rpchttp.HeaderRpcStatus, "OK")
 				w.Header().Set(rpchttp.HeaderRpcServer, "name=demo.server,version=1.0.0,instanceId=123e4567-e89b-12d3-a456-426614174000")
 				if fallback {
 					w.Header().Set("Content-Type", rpchttp.ContentTypeJson)
-					_, _ = io.WriteString(w, `{"result":{"data":"AP8="},"error":null}`)
+					_, _ = io.WriteString(w, `{"result":{"data":"AP8=","amount":"1.00"},"error":null}`)
 					return
 				}
 				w.Header().Set("Content-Type", rpchttp.ContentTypeCbor)
 				encoded, _ := cbor.Marshal(map[string]any{
 					"result": map[string]any{
-						"data": []byte{0, 255},
+						"data":   []byte{0, 255},
+						"amount": "1.00",
 					},
 					"error": nil,
 				})
@@ -69,20 +73,23 @@ func TestBinaryAndJSONFallback(t *testing.T) {
 				t.Fatal(err)
 			}
 			params := struct {
-				Data  []byte           `json:"data" cbor:"data"`
-				Items []string         `json:"items" cbor:"items"`
-				Map   map[int64][]byte `json:"map" cbor:"map"`
+				Data   skeltype.Binary           `json:"data" cbor:"data"`
+				Amount skeltype.Decimal          `json:"amount" cbor:"amount"`
+				Items  []string                  `json:"items" cbor:"items"`
+				Map    map[int64]skeltype.Binary `json:"map" cbor:"map"`
 			}{
-				Data: []byte{0, 255},
-				Map: map[int64][]byte{
+				Data:   skeltype.Binary{0, 255},
+				Amount: skeltype.NewDecimal(decimal.RequireFromString("1.00")),
+				Map: map[int64]skeltype.Binary{
 					9007199254740993: {42},
 				},
 			}
 			var result struct {
-				Data []byte `json:"data" cbor:"data"`
+				Data   skeltype.Binary  `json:"data" cbor:"data"`
+				Amount skeltype.Decimal `json:"amount" cbor:"amount"`
 			}
 			_, err = client.invoke(context.Background(), testMethodInfo(t, registry, "demo.Service", "Get"), params, &result)
-			if err != nil || !bytes.Equal(result.Data, params.Data) {
+			if err != nil || !bytes.Equal(result.Data, params.Data) || result.Amount.StringFixed(2) != "1.00" || result.Amount.Exponent() != -2 {
 				t.Fatalf("result=%+v err=%v", result, err)
 			}
 		})

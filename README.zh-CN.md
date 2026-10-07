@@ -192,12 +192,12 @@ fxamacker 也会回退到 `json` tag。返回值含 binary 的方法仍接受 JS
 
 ## 兼容性与范围
 
-独立集成测试通过 HTTP 调用 Vine v0.15.3 的真实 Portal RpcGW 和认证代码；后端使用进程内 fixture，发现和 schema 使用内存 fixture。
+独立集成测试通过 HTTP 调用 Vine 的真实 Portal RpcGW 和认证代码；后端使用进程内 fixture，descriptor 和服务发现数据由内存 Watch fixture 提供。
 覆盖 JSON/CBOR、匿名和认证接口、认证失败、业务错误、追踪传递及网关超时限制。
 不模拟完整 Hub/Link 部署或后端 mTLS。
 
-首版支持手写请求、结果类型。现有 skelc Go service client 仍依赖 Vine，不能直接传给此客户端；
-生成器适配仍属于后续工作；Vine 通过框架适配层使用共享 transport，不依赖独立客户端 API。本客户端不实现 Portal `/inspect`。
+本客户端支持手写请求、结果类型和 skelc 生成的 Go API 客户端。生成的后端 service client 使用 Vine。
+Vine 通过框架适配层使用共享 transport。本客户端不实现 Portal `/inspect`。
 
 ## 包结构
 
@@ -219,4 +219,4 @@ GOWORK=off go test -race ./...
 
 ## Skel 基础类型
 
-`go.yorun.ai/vrpc/skel` 提供 Decimal、Binary、Timestamp、Duration、LocalDate、LocalTime、LocalDateTime、UUID、JSON 及其构造函数。JSON 和 CBOR 表示与 Vine 契约一致，包括小数精度和日期时间字符串。生成的 API 客户端可使用这些类型，无需依赖 Vine。
+`go.yorun.ai/skel/types`（导入别名 `skeltype`）提供 Decimal、Binary、Timestamp、Duration、LocalDate、LocalTime、LocalDateTime、UUID、JSON 及其构造函数。vRPC 直接复用 Skel 的类型及 JSON/CBOR 编解码，不再提供 `go.yorun.ai/vrpc/skel`。这些表示与 Vine 契约一致，包括小数精度和日期时间字符串。生成的 API 客户端与手写调用方使用同一套类型，无需依赖 Vine。
