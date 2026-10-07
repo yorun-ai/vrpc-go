@@ -23,7 +23,7 @@ func (c _Codec) EncodeRequest(params any) ([]byte, error) {
 	return rpchttp.EncodeRequest(params, c.ContentType())
 }
 
-func (c _Codec) DecodeResponse(data []byte, result any) (*ErrorPayload, error) {
+func (c _Codec) DecodeResponse(data []byte, result any) (*rpchttp.ErrorPayload, error) {
 	envelope, err := rpchttp.DecodeResponse(data, c.ContentType())
 	if err != nil {
 		return nil, err
@@ -31,17 +31,14 @@ func (c _Codec) DecodeResponse(data []byte, result any) (*ErrorPayload, error) {
 	return decodePayload(envelope, result)
 }
 
-func decodePayload(envelope *rpchttp.ResponsePayload, result any) (*ErrorPayload, error) {
+func decodePayload(envelope *rpchttp.ResponsePayload, result any) (*rpchttp.ErrorPayload, error) {
 	if len(envelope.ResultBytes) == 0 && len(envelope.ErrorBytes) == 0 {
 		return nil, fmt.Errorf("missing response envelope")
 	}
 
-	if !rpchttp.IsEmptyErrorPayload(envelope.ErrorBytes) {
-		var payload ErrorPayload
-		if err := envelope.Unmarshal(envelope.ErrorBytes, &payload); err != nil {
-			return nil, err
-		}
-		return &payload, nil
+	payload, err := envelope.DecodeError()
+	if err != nil || payload != nil {
+		return payload, err
 	}
 
 	if len(envelope.ResultBytes) == 0 {

@@ -178,6 +178,9 @@ fxamacker 也会回退到 `json` tag。返回值含 binary 的方法仍接受 JS
 - `*vrpc.ProtocolError` 表示成功响应的协议格式错误。
 - transport 和 context 错误保留原始原因；用 `errors.Is` 判断取消、超时，用 `errors.As` 读取结构化错误。
 
+`vrpc.ErrorPayload` 是共享结构 `transport/http.ErrorPayload` 的别名，包含
+`Code`、`Message`、`Reason`、`Detail`。
+
 `ResponseMetadata` 提供 HTTP 状态、协议状态、server identity 和响应 header。
 需要时可从 `ResponseMetadata.Header` 读取 `portal-trace-id`。
 远端结果以 `ResponseMetadata.Status` 为准，不依赖消息文本或错误体里的辅助 `Code`。
@@ -187,8 +190,9 @@ fxamacker 也会回退到 `json` tag。返回值含 binary 的方法仍接受 JS
 
 `transport/http` 提供协议常量、header 校验、超时处理、JSON/CBOR 请求与响应编解码、
 消息体限制和 HTTP 往返生命周期。适配层将 Go 值交给 `EncodeRequest` 和 `EncodeResponse`，
-通过 `DecodeRequest` 解码参数，通过 `DecodeResponse` 与 `ResponsePayload.Unmarshal`
-解码结果和错误。这些操作采用固定协议规则：nil 集合编码为空集合，解码拒绝重复键。
+其中错误使用 `*ErrorPayload` 表示。通过 `DecodeRequest` 解码参数，通过 `DecodeResponse`
+取得响应，再用 `ResponsePayload.Unmarshal` 解码结果、`ResponsePayload.DecodeError` 解码错误。
+这些操作采用固定协议规则：nil 集合编码为空集合，解码拒绝重复键。
 适配层继续负责传输配置、应用元数据和错误策略。
 原始信封辅助函数保留已编码的载荷；`ResponsePayload.EncodeWithError` 替换错误时，
 无需解码和重新编码结果。

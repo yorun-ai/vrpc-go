@@ -205,6 +205,9 @@ forward compatibility.
 - Transport/context errors wrap their causes; use `errors.Is` for
   cancellation/deadline errors and `errors.As` for structured errors.
 
+`vrpc.ErrorPayload` aliases the shared `transport/http.ErrorPayload`, containing
+`Code`, `Message`, `Reason`, and `Detail`.
+
 `ResponseMetadata` exposes HTTP status, protocol status, server identity and response headers.
 Read `portal-trace-id` from `ResponseMetadata.Header` when needed. Classify remote outcomes by `ResponseMetadata.Status`,
 not message text or the auxiliary payload's `Code`. The shared transport limits response bodies
@@ -215,9 +218,10 @@ included in protocol error messages.
 
 `transport/http` provides wire constants, header checks, timeout handling,
 JSON/CBOR request and response codecs, body limits and the HTTP exchange lifecycle.
-Adapters pass Go values to `EncodeRequest` and `EncodeResponse`, decode arguments
-with `DecodeRequest`, and use `DecodeResponse` plus `ResponsePayload.Unmarshal`
-for results and errors. These operations use fixed wire rules: nil collections
+Adapters pass Go values to `EncodeRequest` and `EncodeResponse`, with errors represented
+by `*ErrorPayload`. They decode arguments with `DecodeRequest`, and use `DecodeResponse`
+with `ResponsePayload.Unmarshal` for results and `ResponsePayload.DecodeError` for errors.
+These operations use fixed wire rules: nil collections
 encode as empty collections, and decoding rejects duplicate keys.
 Adapters retain transport configuration, application metadata and error policy.
 Raw envelope helpers preserve encoded payloads; `ResponsePayload.EncodeWithError`

@@ -92,18 +92,17 @@ func TestResponseCodecPreservesResultWhenReplacingError(t *testing.T) {
 		ID    int64    `json:"id"`
 		Items []string `json:"items"`
 	}
-	type errorPayload struct {
-		Code   string `json:"code"`
-		Detail string `json:"detail"`
-	}
 	for _, contentType := range []string{ContentTypeJson, ContentTypeCbor} {
 		t.Run(contentType, func(t *testing.T) {
+			wantError := ErrorPayload{
+				Code:    "OPERATION_FAILED",
+				Message: "write failed",
+				Reason:  "quota-exceeded",
+				Detail:  "private",
+			}
 			body, err := EncodeResponse(result{
 				ID: 9007199254740993,
-			}, errorPayload{
-				Code:   "OPERATION_FAILED",
-				Detail: "private",
-			}, contentType)
+			}, &wantError, contentType)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -118,9 +117,12 @@ func TestResponseCodecPreservesResultWhenReplacingError(t *testing.T) {
 			if decoded.ID != 9007199254740993 || decoded.Items == nil {
 				t.Fatalf("unexpected result: %+v", decoded)
 			}
-			body, err = payload.EncodeWithError(errorPayload{
-				Code: "OPERATION_FAILED",
-			})
+			errorValue, err := payload.DecodeError()
+			if err != nil || errorValue == nil || *errorValue != wantError {
+				t.Fatalf("unexpected error: %+v, %v", errorValue, err)
+			}
+			errorValue.Detail = ""
+			body, err = payload.EncodeWithError(errorValue)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -131,12 +133,10 @@ func TestResponseCodecPreservesResultWhenReplacingError(t *testing.T) {
 			if !bytes.Equal(payload.ResultBytes, rewritten.ResultBytes) {
 				t.Fatal("replacing an error changed the result bytes")
 			}
-			var errorValue errorPayload
-			if err := rewritten.Unmarshal(rewritten.ErrorBytes, &errorValue); err != nil {
-				t.Fatal(err)
-			}
-			if errorValue.Code != "OPERATION_FAILED" || errorValue.Detail != "" {
-				t.Fatalf("unexpected error: %+v", errorValue)
+			wantError.Detail = ""
+			errorValue, err = rewritten.DecodeError()
+			if err != nil || errorValue == nil || *errorValue != wantError {
+				t.Fatalf("unexpected rewritten error: %+v, %v", errorValue, err)
 			}
 		})
 	}

@@ -239,7 +239,7 @@ func (c *Client) invoke(ctx context.Context, method MethodInfo, params, result a
 	return metadata, nil
 }
 
-func (c *Client) decodeResponse(response *http.Response, metadata *ResponseMetadata, result any, encoding _InvokeEncoding) (*ErrorPayload, error) {
+func (c *Client) decodeResponse(response *http.Response, metadata *ResponseMetadata, result any, encoding _InvokeEncoding) (*rpchttp.ErrorPayload, error) {
 	if err := rpchttp.CheckResponseHeaders(response.Header); err != nil {
 		return nil, err
 	}

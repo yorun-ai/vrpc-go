@@ -8,6 +8,15 @@ import (
 	"github.com/fxamacker/cbor/v2"
 )
 
+// ErrorPayload is the structured error carried by a vRPC response.
+// The response status determines the invocation outcome; Code is auxiliary data.
+type ErrorPayload struct {
+	Code    string `json:"code" cbor:"code"`
+	Message string `json:"message" cbor:"message"`
+	Reason  string `json:"reason" cbor:"reason"`
+	Detail  string `json:"detail" cbor:"detail"`
+}
+
 // ResponsePayload holds raw result/error bytes and their payload decoder.
 // Framework adapters retain ownership of typed decoding and validation.
 type ResponsePayload struct {
@@ -22,8 +31,21 @@ func (p *ResponsePayload) Unmarshal(data []byte, target any) error {
 	return p.codec.unmarshal(data, target)
 }
 
+// DecodeError decodes the shared error payload, returning nil for an absent or null error.
+// It leaves status interpretation and application-specific code validation to adapters.
+func (p *ResponsePayload) DecodeError() (*ErrorPayload, error) {
+	if IsEmptyErrorPayload(p.ErrorBytes) {
+		return nil, nil
+	}
+	var payload ErrorPayload
+	if err := p.Unmarshal(p.ErrorBytes, &payload); err != nil {
+		return nil, err
+	}
+	return &payload, nil
+}
+
 // EncodeWithError replaces the error value while preserving the encoded result.
-func (p *ResponsePayload) EncodeWithError(errorValue any) ([]byte, error) {
+func (p *ResponsePayload) EncodeWithError(errorValue *ErrorPayload) ([]byte, error) {
 	raw, err := p.codec.marshal(errorValue)
 	if err != nil {
 		return nil, err
@@ -36,7 +58,7 @@ func (p *ResponsePayload) EncodeWithError(errorValue any) ([]byte, error) {
 
 // EncodeResponse encodes the result, error and envelope with the vRPC wire rules.
 // Adapters decide whether a response is successful and supply nil for no error.
-func EncodeResponse(result any, errorValue any, contentType string) ([]byte, error) {
+func EncodeResponse(result any, errorValue *ErrorPayload, contentType string) ([]byte, error) {
 	codec, err := codecForContentType(contentType)
 	if err != nil {
 		return nil, err
