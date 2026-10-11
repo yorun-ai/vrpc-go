@@ -5,7 +5,7 @@ go 1.27.0
 require (
 	github.com/fxamacker/cbor/v2 v2.9.3
 	github.com/shopspring/decimal v1.4.0
-	go.yorun.ai/skel v0.31.0
+	go.yorun.ai/skel v0.32.0
 )
 
 require (
