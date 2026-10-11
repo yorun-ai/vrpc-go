@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-10-11
+
+### Changed
+
+- Upgrade the Skel dependency from v0.31.0 to v0.32.0, aligning the Go client
+  with the current Skel dependency baseline. Client APIs and JSON/CBOR wire
+  behavior remain unchanged.
+
+### Upgrade Notes
+
+- Go module resolution now selects Skel v0.32.0 or later. Applications that
+  also use Skel descriptors directly must account for the removed `Via`/`Vias`
+  metadata and the actor-only `HasAudience` signatures in Skel v0.32.0.
+
 ## [0.14.0] - 2026-10-07
 
 ### Added
@@ -87,6 +101,7 @@
 - Raw Portal CLI example and isolated Portal compatibility tests covering typed and raw invocations.
 - README badges for license, version, Go, package reference and CI.
 
-[Unreleased]: https://github.com/yorun-ai/vrpc-go/compare/v0.14.0...HEAD
+[Unreleased]: https://github.com/yorun-ai/vrpc-go/compare/v0.15.0...HEAD
+[0.15.0]: https://github.com/yorun-ai/vrpc-go/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/yorun-ai/vrpc-go/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/yorun-ai/vrpc-go/compare/v0.12.0...v0.13.0
