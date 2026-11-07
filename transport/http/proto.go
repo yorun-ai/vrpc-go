@@ -324,8 +324,10 @@ func RequestContentTypes(argumentsContainBinary, resultContainsBinary bool) (con
 }
 
 const (
-	// MaxRequestBodyBytes is the maximum encoded Rpc request body size.
-	MaxRequestBodyBytes int64 = 32 << 20
+	// MaxJSONRequestBodyBytes is the maximum encoded JSON Rpc request body size.
+	MaxJSONRequestBodyBytes int64 = 32 << 20
+	// MaxCBORRequestBodyBytes is the maximum encoded CBOR Rpc request body size.
+	MaxCBORRequestBodyBytes int64 = 128 << 20
 	// MaxResponseBodyBytes is the maximum encoded Rpc response body size.
 	MaxResponseBodyBytes int64 = 128 << 20
 )

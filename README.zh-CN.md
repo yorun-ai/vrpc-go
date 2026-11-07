@@ -197,6 +197,13 @@ fxamacker 也会回退到 `json` tag。返回值含 binary 的方法仍接受 JS
 原始信封辅助函数保留已编码的载荷；`ResponsePayload.EncodeWithError` 替换错误时，
 无需解码和重新编码结果。
 
+`ReadRequestBody` 根据 `Content-Type` 限制完整编码后的请求信封：JSON 为 32 MiB，
+CBOR 为 128 MiB。它同时检查声明长度和实际读取字节数，未知长度的请求也受限制。
+响应体上限仍为 128 MiB。`RequestBodyLimit` 提供按编码选择的上限；
+原有 `MaxRequestBodyBytes` 常量已删除，固定上限的调用方应迁移至
+`MaxJSONRequestBodyBytes` 或 `MaxCBORRequestBodyBytes`。这些是固定的传输层限制，
+不是客户端配置项。接收端必须使用更新后的传输层，才能接受更大的 CBOR 请求。
+
 ## 兼容性与范围
 
 测试覆盖客户端调用、header、错误、取消和共享 JSON/CBOR 协议编解码。
