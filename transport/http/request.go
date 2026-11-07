@@ -100,9 +100,19 @@ func DecodeCBORRequest(body []byte) ([]byte, error) {
 	return payload.Params, nil
 }
 
-// ReadRequestBody reads the Rpc request body up to the fixed transport limit.
+// RequestBodyLimit returns the encoded request body limit for a Content-Type.
+// CBOR allows 128 MiB; JSON and unrecognized or missing types use 32 MiB.
+// This does not validate the header; adapters must still check content negotiation.
+func RequestBodyLimit(contentType string) int64 {
+	if MediaTypeOf(contentType) == ContentTypeCbor {
+		return MaxCBORRequestBodyBytes
+	}
+	return MaxJSONRequestBodyBytes
+}
+
+// ReadRequestBody reads the Rpc request body up to its encoding-specific limit.
 func ReadRequestBody(request *http.Request) ([]byte, error) {
-	return ReadBody(request.Body, request.ContentLength, MaxRequestBodyBytes, "request")
+	return ReadBody(request.Body, request.ContentLength, RequestBodyLimit(request.Header.Get(HeaderContentType)), "request")
 }
 
 // NewRequest assembles the common HTTP invocation from an encoded invocation envelope.

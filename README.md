@@ -227,6 +227,15 @@ Adapters retain transport configuration, application metadata and error policy.
 Raw envelope helpers preserve encoded payloads; `ResponsePayload.EncodeWithError`
 replaces an error without decoding and re-encoding the result.
 
+`ReadRequestBody` limits the complete encoded request envelope to 32 MiB for
+JSON and 128 MiB for CBOR, selected by `Content-Type`. It checks both the declared
+length and bytes read, including requests without a known length. The response
+limit remains 128 MiB. `RequestBodyLimit` exposes the encoding-specific limit;
+the former `MaxRequestBodyBytes` constant is removed. Migrate fixed-limit callers
+to `MaxJSONRequestBodyBytes` or `MaxCBORRequestBodyBytes`. These are fixed
+transport limits, not client options. Receiving servers must use the updated
+transport to accept larger CBOR requests.
+
 ## Compatibility and scope
 
 Tests cover client invocation, headers, errors, cancellation and the shared
