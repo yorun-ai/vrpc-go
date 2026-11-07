@@ -2,6 +2,31 @@
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-11-07
+
+### Changed
+
+- Select the encoded RPC request body limit by Content-Type: JSON remains
+  limited to 32 MiB and CBOR now allows 128 MiB. Both declared lengths and
+  actual bytes read are checked; response bodies remain limited to 128 MiB.
+
+### Added
+
+- Expose `RequestBodyLimit`, `MaxJSONRequestBodyBytes` and
+  `MaxCBORRequestBodyBytes` in `transport/http`.
+
+### Removed
+
+- Remove the public `MaxRequestBodyBytes` constant.
+
+### Upgrade Notes
+
+- Replace references to `MaxRequestBodyBytes` with `RequestBodyLimit(contentType)`
+  for encoding-aware reads, or `MaxJSONRequestBodyBytes` / `MaxCBORRequestBodyBytes`
+  for a fixed encoding. JSON-only endpoints such as MCP must retain the JSON limit.
+- Receiving servers must adopt this transport version to accept CBOR requests
+  above 32 MiB. Limits apply to the entire encoded envelope, including overhead.
+
 ## [0.15.1] - 2026-10-21
 
 ### Changed
@@ -115,7 +140,8 @@
 - Raw Portal CLI example and isolated Portal compatibility tests covering typed and raw invocations.
 - README badges for license, version, Go, package reference and CI.
 
-[Unreleased]: https://github.com/yorun-ai/vrpc-go/compare/v0.15.1...HEAD
+[Unreleased]: https://github.com/yorun-ai/vrpc-go/compare/v0.16.0...HEAD
+[0.16.0]: https://github.com/yorun-ai/vrpc-go/compare/v0.15.1...v0.16.0
 [0.15.1]: https://github.com/yorun-ai/vrpc-go/compare/v0.15.0...v0.15.1
 [0.15.0]: https://github.com/yorun-ai/vrpc-go/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/yorun-ai/vrpc-go/compare/v0.13.0...v0.14.0
