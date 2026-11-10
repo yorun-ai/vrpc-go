@@ -6,25 +6,15 @@ import (
 	rpchttp "go.yorun.ai/vrpc/transport/http"
 )
 
-// _Codec selects built-in JSON (false) or CBOR (true) for one invocation.
-type _Codec bool
-
-func (c _Codec) ContentType() string {
-	if c {
-		return rpchttp.ContentTypeCbor
-	}
-	return rpchttp.ContentTypeJson
-}
-
-func (c _Codec) EncodeRequest(params any) ([]byte, error) {
+func encodeRequest(params any, contentType string) ([]byte, error) {
 	if params == nil {
 		params = struct{}{}
 	}
-	return rpchttp.EncodeRequest(params, c.ContentType())
+	return rpchttp.EncodeRequest(params, contentType)
 }
 
-func (c _Codec) DecodeResponse(data []byte, result any) (*rpchttp.ErrorPayload, error) {
-	envelope, err := rpchttp.DecodeResponse(data, c.ContentType())
+func decodeResponsePayload(data []byte, result any, contentType string) (*rpchttp.ErrorPayload, error) {
+	envelope, err := rpchttp.DecodeResponse(data, contentType)
 	if err != nil {
 		return nil, err
 	}

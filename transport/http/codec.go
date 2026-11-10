@@ -1,56 +1,40 @@
 package http
 
 import (
-	"encoding/json/v2"
 	"fmt"
 
-	"github.com/fxamacker/cbor/v2"
+	"go.yorun.ai/skel/types/codec"
 )
 
-// _Codec selects the fixed JSON or CBOR wire rules.
-type _Codec bool
+// _Encoding identifies the payload and envelope format.
+type _Encoding uint8
 
-var cborEncodeMode cbor.EncMode
-var cborDecodeMode cbor.DecMode
+const (
+	encodingJSON _Encoding = iota
+	encodingCBOR
+)
 
-func init() {
-	var err error
-	cborEncodeMode, err = (cbor.EncOptions{
-		NilContainers: cbor.NilContainerAsEmpty,
-	}).EncMode()
-	if err != nil {
-		panic(err)
-	}
-
-	cborDecodeMode, err = (cbor.DecOptions{
-		DupMapKey: cbor.DupMapKeyEnforcedAPF,
-	}).DecMode()
-	if err != nil {
-		panic(err)
-	}
-}
-
-func codecForContentType(contentType string) (_Codec, error) {
+func encodingForContentType(contentType string) (_Encoding, error) {
 	switch MediaTypeOf(contentType) {
 	case ContentTypeJson:
-		return false, nil
+		return encodingJSON, nil
 	case ContentTypeCbor:
-		return true, nil
+		return encodingCBOR, nil
 	default:
-		return false, fmt.Errorf("unsupported rpc content type %q", contentType)
+		return encodingJSON, fmt.Errorf("unsupported rpc content type %q", contentType)
 	}
 }
 
-func (c _Codec) marshal(value any) ([]byte, error) {
-	if c {
-		return cborEncodeMode.Marshal(value)
+func (e _Encoding) marshal(value any) ([]byte, error) {
+	if e == encodingCBOR {
+		return codec.MarshalCBOR(value)
 	}
-	return json.Marshal(value)
+	return codec.MarshalJSON(value)
 }
 
-func (c _Codec) unmarshal(data []byte, target any) error {
-	if c {
-		return cborDecodeMode.Unmarshal(data, target)
+func (e _Encoding) unmarshal(data []byte, target any) error {
+	if e == encodingCBOR {
+		return codec.UnmarshalCBOR(data, target)
 	}
-	return json.Unmarshal(data, target)
+	return codec.UnmarshalJSON(data, target)
 }

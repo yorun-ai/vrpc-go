@@ -172,12 +172,12 @@ func (c *Client) invoke(ctx context.Context, method MethodInfo, params, result a
 	}
 
 	encoding := method.invokeEncoding()
-	body, err := encoding.request.EncodeRequest(params)
+	body, err := encodeRequest(params, encoding.requestContentType)
 	if err != nil {
 		return nil, fmt.Errorf("vrpc: encode request: %w", err)
 	}
 
-	request, err := rpchttp.NewRequest(ctx, c.endpoint, method.FullURLPath(), body, encoding.request.ContentType(), encoding.accept)
+	request, err := rpchttp.NewRequest(ctx, c.endpoint, method.FullURLPath(), body, encoding.requestContentType, encoding.accept)
 	if err != nil {
 		return nil, err
 	}
@@ -257,12 +257,10 @@ func (c *Client) decodeResponse(response *http.Response, metadata *ResponseMetad
 	if err != nil {
 		return nil, err
 	}
-	codec := _Codec(false)
 	if contentType != rpchttp.ContentTypeJson {
 		if !encoding.binary || contentType != rpchttp.ContentTypeCbor {
 			return nil, fmt.Errorf("unsupported response content type %s", contentType)
 		}
-		codec = _Codec(true)
 	}
 
 	if encoding := response.Header.Get("Content-Encoding"); encoding != "" && encoding != "identity" {
@@ -278,5 +276,5 @@ func (c *Client) decodeResponse(response *http.Response, metadata *ResponseMetad
 		result = nil
 	}
 
-	return codec.DecodeResponse(body, result)
+	return decodeResponsePayload(body, result, contentType)
 }

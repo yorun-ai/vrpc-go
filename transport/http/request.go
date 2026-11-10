@@ -12,16 +12,16 @@ import (
 
 // EncodeRequest encodes arguments and their envelope with the vRPC wire rules.
 func EncodeRequest(params any, contentType string) ([]byte, error) {
-	codec, err := codecForContentType(contentType)
+	encoding, err := encodingForContentType(contentType)
 	if err != nil {
 		return nil, err
 	}
 
-	raw, err := codec.marshal(params)
+	raw, err := encoding.marshal(params)
 	if err != nil {
 		return nil, err
 	}
-	if codec {
+	if encoding == encodingCBOR {
 		return EncodeCBORRequest(raw)
 	}
 	return EncodeJSONRequest(raw)
@@ -30,13 +30,13 @@ func EncodeRequest(params any, contentType string) ([]byte, error) {
 // DecodeRequest decodes the envelope and arguments, rejecting duplicate keys.
 // The target may be partially populated on error and must then be discarded.
 func DecodeRequest(body []byte, params any, contentType string) error {
-	codec, err := codecForContentType(contentType)
+	encoding, err := encodingForContentType(contentType)
 	if err != nil {
 		return err
 	}
 
 	var raw []byte
-	if codec {
+	if encoding == encodingCBOR {
 		raw, err = DecodeCBORRequest(body)
 	} else {
 		raw, err = DecodeJSONRequest(body)
@@ -45,7 +45,7 @@ func DecodeRequest(body []byte, params any, contentType string) error {
 		return err
 	}
 
-	if err := codec.unmarshal(raw, params); err != nil {
+	if err := encoding.unmarshal(raw, params); err != nil {
 		return fmt.Errorf("request params cannot be parsed")
 	}
 	return nil
@@ -58,7 +58,7 @@ type JSONRequest struct {
 
 // EncodeJSONRequest wraps already-encoded arguments without re-encoding them.
 func EncodeJSONRequest(params []byte) ([]byte, error) {
-	return _Codec(false).marshal(&JSONRequest{
+	return encodingJSON.marshal(&JSONRequest{
 		Params: params,
 	})
 }
@@ -66,7 +66,7 @@ func EncodeJSONRequest(params []byte) ([]byte, error) {
 // DecodeJSONRequest extracts encoded arguments from a JSON request envelope.
 func DecodeJSONRequest(body []byte) ([]byte, error) {
 	var payload JSONRequest
-	if err := _Codec(false).unmarshal(body, &payload); err != nil {
+	if err := encodingJSON.unmarshal(body, &payload); err != nil {
 		return nil, fmt.Errorf("request body cannot be parsed")
 	}
 	if len(payload.Params) == 0 {
@@ -82,7 +82,7 @@ type CBORRequest struct {
 
 // EncodeCBORRequest wraps already-encoded CBOR parameters without modifying their representation.
 func EncodeCBORRequest(params []byte) ([]byte, error) {
-	return _Codec(true).marshal(&CBORRequest{
+	return encodingCBOR.marshal(&CBORRequest{
 		Params: params,
 	})
 }
@@ -91,7 +91,7 @@ func EncodeCBORRequest(params []byte) ([]byte, error) {
 // Callers must also reject duplicate keys when decoding the raw parameters.
 func DecodeCBORRequest(body []byte) ([]byte, error) {
 	var payload CBORRequest
-	if err := _Codec(true).unmarshal(body, &payload); err != nil {
+	if err := encodingCBOR.unmarshal(body, &payload); err != nil {
 		return nil, fmt.Errorf("request body cannot be parsed")
 	}
 	if len(payload.Params) == 0 {

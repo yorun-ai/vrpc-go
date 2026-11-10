@@ -152,16 +152,16 @@ func (r *Registry) MustGetMethodInfo(serviceSkelName, methodSkelName string) Met
 }
 
 type _InvokeEncoding struct {
-	request _Codec
-	binary  bool
-	accept  string
+	requestContentType string
+	binary             bool
+	accept             string
 }
 
 func (m MethodInfo) invokeEncoding() _InvokeEncoding {
-	_, accept := rpchttp.RequestContentTypes(m.ArgumentsContainsBinaryType(), m.ResultContainsBinaryType())
+	contentType, accept := rpchttp.RequestContentTypes(m.ArgumentsContainsBinaryType(), m.ResultContainsBinaryType())
 	return _InvokeEncoding{
-		request: _Codec(m.ArgumentsContainsBinaryType()),
-		binary:  m.ResultContainsBinaryType(),
-		accept:  accept,
+		requestContentType: contentType,
+		binary:             m.ResultContainsBinaryType(),
+		accept:             accept,
 	}
 }

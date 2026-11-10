@@ -230,4 +230,6 @@ CI 执行客户端和共享传输层测试，不依赖 Vine。
 
 ## Skel 基础类型
 
-`go.yorun.ai/skel/types`（导入别名 `skeltype`）提供 Decimal、Binary、Timestamp、Duration、LocalDate、LocalTime、LocalDateTime、UUID、JSON 及其构造函数。vRPC 直接复用 Skel 的类型及 JSON/CBOR 编解码，不再提供 `go.yorun.ai/vrpc/skel`。这些表示与 Vine 契约一致，包括小数精度和日期时间字符串。生成的 API 客户端与手写调用方使用同一套类型，无需依赖 Vine。
+`go.yorun.ai/skel/types`（导入别名 `skeltype`）提供 Decimal、Binary、Timestamp、Duration、LocalDate、LocalTime、LocalDateTime、JSON 及其构造函数。vRPC 直接复用 Skel 的类型及 JSON/CBOR 编解码，不再提供 `go.yorun.ai/vrpc/skel`。这些表示与 Vine 契约一致，包括小数精度和日期时间字符串。生成的 API 客户端与手写调用方使用同一套类型，无需依赖 Vine。
+
+UUID 使用原生 `uuid.UUID`。共享的 `go.yorun.ai/skel/types/codec` 将 UUID 值和 map key 编码为字符串，旧的 `skeltype.UUID` 仍受支持。
