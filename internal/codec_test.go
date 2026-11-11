@@ -96,9 +96,8 @@ func TestCBORInvocationDecodesResponseContentType(t *testing.T) {
 	}
 }
 func TestCodecDecodeCBORResponse(t *testing.T) {
-	codec := _Codec(true)
 	for _, data := range [][]byte{nil, {0xf6}, {0xa0}, {0xa2, 0x66, 'r', 'e', 's', 'u', 'l', 't', 0x01, 0x66, 'r', 'e', 's', 'u', 'l', 't', 0x02}} {
-		if _, err := codec.DecodeResponse(data, nil); err == nil {
+		if _, err := decodeResponsePayload(data, nil, rpchttp.ContentTypeCbor); err == nil {
 			t.Errorf("accepted %x", data)
 		}
 	}
@@ -109,7 +108,7 @@ func TestCodecDecodeCBORResponse(t *testing.T) {
 			"message": "missing",
 		},
 	})
-	payload, err := codec.DecodeResponse(data, nil)
+	payload, err := decodeResponsePayload(data, nil, rpchttp.ContentTypeCbor)
 	if err != nil || payload.Code != "NOT_FOUND" {
 		t.Fatalf("payload=%+v %v", payload, err)
 	}

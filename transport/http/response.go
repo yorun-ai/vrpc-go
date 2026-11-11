@@ -22,13 +22,13 @@ type ErrorPayload struct {
 type ResponsePayload struct {
 	ResultBytes []byte
 	ErrorBytes  []byte
-	codec       _Codec
+	encoding    _Encoding
 }
 
 // Unmarshal decodes a result or error using the response's fixed wire rules.
 // The target may be partially populated on error and must then be discarded.
 func (p *ResponsePayload) Unmarshal(data []byte, target any) error {
-	return p.codec.unmarshal(data, target)
+	return p.encoding.unmarshal(data, target)
 }
 
 // DecodeError decodes the shared error payload, returning nil for an absent or null error.
@@ -46,11 +46,11 @@ func (p *ResponsePayload) DecodeError() (*ErrorPayload, error) {
 
 // EncodeWithError replaces the error value while preserving the encoded result.
 func (p *ResponsePayload) EncodeWithError(errorValue *ErrorPayload) ([]byte, error) {
-	raw, err := p.codec.marshal(errorValue)
+	raw, err := p.encoding.marshal(errorValue)
 	if err != nil {
 		return nil, err
 	}
-	if p.codec {
+	if p.encoding == encodingCBOR {
 		return EncodeCBORResponse(p.ResultBytes, raw)
 	}
 	return EncodeJSONResponse(p.ResultBytes, raw)
@@ -59,18 +59,18 @@ func (p *ResponsePayload) EncodeWithError(errorValue *ErrorPayload) ([]byte, err
 // EncodeResponse encodes the result, error and envelope with the vRPC wire rules.
 // Adapters decide whether a response is successful and supply nil for no error.
 func EncodeResponse(result any, errorValue *ErrorPayload, contentType string) ([]byte, error) {
-	codec, err := codecForContentType(contentType)
+	encoding, err := encodingForContentType(contentType)
 	if err != nil {
 		return nil, err
 	}
 
-	raw, err := codec.marshal(result)
+	raw, err := encoding.marshal(result)
 	if err != nil {
 		return nil, err
 	}
 	payload := ResponsePayload{
 		ResultBytes: raw,
-		codec:       codec,
+		encoding:    encoding,
 	}
 	return payload.EncodeWithError(errorValue)
 }
@@ -78,11 +78,11 @@ func EncodeResponse(result any, errorValue *ErrorPayload, contentType string) ([
 // DecodeResponse extracts raw result/error values and their fixed wire decoder.
 // Adapters decode the required values with ResponsePayload.Unmarshal.
 func DecodeResponse(body []byte, contentType string) (*ResponsePayload, error) {
-	codec, err := codecForContentType(contentType)
+	encoding, err := encodingForContentType(contentType)
 	if err != nil {
 		return nil, err
 	}
-	if codec {
+	if encoding == encodingCBOR {
 		return DecodeCBORResponse(body)
 	}
 	return DecodeJSONResponse(body)
@@ -96,7 +96,7 @@ type JSONResponse struct {
 
 // EncodeJSONResponse wraps encoded result/error values without re-encoding them.
 func EncodeJSONResponse(result, err []byte) ([]byte, error) {
-	return _Codec(false).marshal(&JSONResponse{
+	return encodingJSON.marshal(&JSONResponse{
 		Result: result,
 		Error:  err,
 	})
@@ -105,13 +105,13 @@ func EncodeJSONResponse(result, err []byte) ([]byte, error) {
 // DecodeJSONResponse extracts raw payloads from a JSON response envelope.
 func DecodeJSONResponse(body []byte) (*ResponsePayload, error) {
 	var payload JSONResponse
-	if err := _Codec(false).unmarshal(body, &payload); err != nil {
+	if err := encodingJSON.unmarshal(body, &payload); err != nil {
 		return nil, fmt.Errorf("response body cannot be parsed")
 	}
 	return &ResponsePayload{
 		ResultBytes: payload.Result,
 		ErrorBytes:  payload.Error,
-		codec:       false,
+		encoding:    encodingJSON,
 	}, nil
 }
 
@@ -128,7 +128,7 @@ type CBORResponse struct {
 
 // EncodeCBORResponse wraps already-encoded CBOR result/error values.
 func EncodeCBORResponse(result, err []byte) ([]byte, error) {
-	return _Codec(true).marshal(&CBORResponse{
+	return encodingCBOR.marshal(&CBORResponse{
 		Result: result,
 		Error:  err,
 	})
@@ -138,13 +138,13 @@ func EncodeCBORResponse(result, err []byte) ([]byte, error) {
 // that also rejects duplicate keys in the result and error payloads.
 func DecodeCBORResponse(body []byte) (*ResponsePayload, error) {
 	var payload CBORResponse
-	if err := _Codec(true).unmarshal(body, &payload); err != nil {
+	if err := encodingCBOR.unmarshal(body, &payload); err != nil {
 		return nil, fmt.Errorf("response body cannot be parsed: %w", err)
 	}
 	return &ResponsePayload{
 		ResultBytes: payload.Result,
 		ErrorBytes:  payload.Error,
-		codec:       true,
+		encoding:    encodingCBOR,
 	}, nil
 }
 

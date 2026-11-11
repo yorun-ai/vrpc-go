@@ -265,4 +265,6 @@ See [AGENTS.md](AGENTS.md) for repository boundaries.
 
 ## Skel scalar types
 
-The `go.yorun.ai/skel/types` (imported as `skeltype`) package provides Decimal, Binary, Timestamp, Duration, LocalDate, LocalTime, LocalDateTime, UUID and JSON types and their constructors. vRPC reuses these types and their JSON/CBOR encodings; `go.yorun.ai/vrpc/skel` is no longer provided. Their representations match Vine contracts, including decimal scale and string-based date/time values. Generated API clients and hand-written callers use the same types without depending on Vine.
+The `go.yorun.ai/skel/types` (imported as `skeltype`) package provides Decimal, Binary, Timestamp, Duration, LocalDate, LocalTime, LocalDateTime and JSON types and their constructors. vRPC reuses these types and their JSON/CBOR encodings; `go.yorun.ai/vrpc/skel` is no longer provided. Their representations match Vine contracts, including decimal scale and string-based date/time values. Generated API clients and hand-written callers use the same types without depending on Vine.
+
+UUID uses the native `uuid.UUID` type. The shared `go.yorun.ai/skel/types/codec` JSON/CBOR codecs encode UUID values and map keys as strings; the legacy `skeltype.UUID` remains supported.

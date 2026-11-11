@@ -4,10 +4,11 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
-	rpchttp "go.yorun.ai/vrpc/transport/http"
 	"regexp"
 	"strings"
 	"uuid"
+
+	rpchttp "go.yorun.ai/vrpc/transport/http"
 )
 
 type Identity struct {
@@ -40,7 +41,7 @@ func EncodeIdentity(identity Identity) (string, error) {
 }
 
 func DecodeIdentity(value string) (Identity, error) {
-	fields, err := decodeFields(value)
+	fields, err := rpchttp.DecodeFields(value)
 	if err != nil {
 		return Identity{}, err
 	}
@@ -51,10 +52,6 @@ func DecodeIdentity(value string) (Identity, error) {
 	}
 	_, err = EncodeIdentity(identity)
 	return identity, err
-}
-
-func decodeFields(value string) (map[string]string, error) {
-	return rpchttp.DecodeFields(value)
 }
 
 type Trace struct {
