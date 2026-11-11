@@ -4,12 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	rpchttp "go.yorun.ai/vrpc/transport/http"
-	"mime"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
+
+	rpchttp "go.yorun.ai/vrpc/transport/http"
 )
 
 // Option configures a standalone client. Endpoint includes the invocation prefix.
@@ -204,7 +204,7 @@ func (c *Client) invoke(ctx context.Context, method MethodInfo, params, result a
 			Header:     response.Header.Clone(),
 		}
 
-		payload, decodeErr := c.decodeResponse(response, metadata, result, encoding)
+		payload, decodeErr := decodeResponse(response, metadata, result, encoding)
 		if (metadata.Status != "" && metadata.Status != rpchttp.StatusOK) || response.StatusCode < 200 || response.StatusCode >= 300 {
 			return metadata, &InvocationError{
 				Metadata: metadata,
@@ -237,44 +237,4 @@ func (c *Client) invoke(ctx context.Context, method MethodInfo, params, result a
 	}
 
 	return metadata, nil
-}
-
-func (c *Client) decodeResponse(response *http.Response, metadata *ResponseMetadata, result any, encoding _InvokeEncoding) (*rpchttp.ErrorPayload, error) {
-	if err := rpchttp.CheckResponseHeaders(response.Header); err != nil {
-		return nil, err
-	}
-	if !statusPattern.MatchString(metadata.Status) {
-		return nil, fmt.Errorf("invalid status")
-	}
-
-	server, err := DecodeIdentity(response.Header.Get(rpchttp.HeaderRpcServer))
-	if err != nil {
-		return nil, err
-	}
-	metadata.Server = server
-
-	contentType, _, err := mime.ParseMediaType(response.Header.Get("Content-Type"))
-	if err != nil {
-		return nil, err
-	}
-	if contentType != rpchttp.ContentTypeJson {
-		if !encoding.binary || contentType != rpchttp.ContentTypeCbor {
-			return nil, fmt.Errorf("unsupported response content type %s", contentType)
-		}
-	}
-
-	if encoding := response.Header.Get("Content-Encoding"); encoding != "" && encoding != "identity" {
-		return nil, fmt.Errorf("unsupported response content encoding %s", encoding)
-	}
-
-	body, err := rpchttp.ReadResponseBody(response)
-	if err != nil {
-		return nil, err
-	}
-
-	if metadata.Status != rpchttp.StatusOK || metadata.HTTPStatus < 200 || metadata.HTTPStatus >= 300 {
-		result = nil
-	}
-
-	return decodeResponsePayload(body, result, contentType)
 }
