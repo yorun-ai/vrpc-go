@@ -7,7 +7,7 @@ import (
 	rpchttp "go.yorun.ai/vrpc/transport/http"
 )
 
-// Option configures a standalone client and its transport and credentials.
+// Option configures a standalone client, including its transport and credentials.
 type Option = internalvrpc.Option
 
 // Client invokes vRPC methods without a Vine application runtime.
@@ -44,11 +44,11 @@ type ServiceSpec = internalvrpc.ServiceSpec
 type MethodInfo = internalvrpc.MethodInfo
 
 // Registry stores client contracts and supports concurrent registration and lookup.
-// Its zero value is ready to use.
+// Its zero value is ready for use.
 type Registry = internalvrpc.Registry
 
-// NewClient validates options and constructs a client. Invocations preserve
-// context cancellation and do not add retries.
+// NewClient validates options and returns a client. Calls honor context
+// cancellation and are not retried.
 func NewClient(option Option) (*Client, error) {
 	return internalvrpc.NewClient(option)
 }
@@ -107,7 +107,8 @@ func EncodeTrace(trace Trace) (string, error) {
 
 // EncodeCredentials formats Portal actor credentials as "field value, field value".
 // A nil or empty map produces an empty value for anonymous calls. Ambiguous or
-// unrepresentable fields fail; authentication remains the gateway's responsibility.
+// unrepresentable fields are rejected; authentication remains the gateway's
+// responsibility.
 func EncodeCredentials(credentials map[string]string) (string, error) {
 	return internalvrpc.EncodeCredentials(credentials)
 }

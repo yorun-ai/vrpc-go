@@ -17,7 +17,7 @@ type ErrorPayload struct {
 	Detail  string `json:"detail" cbor:"detail"`
 }
 
-// ResponsePayload holds raw result/error bytes and their payload decoder.
+// ResponsePayload holds raw result and error bytes and their payload decoder.
 // Framework adapters retain ownership of typed decoding and validation.
 type ResponsePayload struct {
 	ResultBytes []byte
@@ -56,8 +56,8 @@ func (p *ResponsePayload) EncodeWithError(errorValue *ErrorPayload) ([]byte, err
 	return EncodeJSONResponse(p.ResultBytes, raw)
 }
 
-// EncodeResponse encodes the result, error and envelope with the vRPC wire rules.
-// Adapters decide whether a response is successful and supply nil for no error.
+// EncodeResponse encodes the result, error, and envelope with the vRPC wire rules.
+// Adapters decide whether a response is successful and pass nil when there is no error.
 func EncodeResponse(result any, errorValue *ErrorPayload, contentType string) ([]byte, error) {
 	encoding, err := encodingForContentType(contentType)
 	if err != nil {
@@ -75,7 +75,7 @@ func EncodeResponse(result any, errorValue *ErrorPayload, contentType string) ([
 	return payload.EncodeWithError(errorValue)
 }
 
-// DecodeResponse extracts raw result/error values and their fixed wire decoder.
+// DecodeResponse extracts raw result and error values and their fixed wire decoder.
 // Adapters decode the required values with ResponsePayload.Unmarshal.
 func DecodeResponse(body []byte, contentType string) (*ResponsePayload, error) {
 	encoding, err := encodingForContentType(contentType)

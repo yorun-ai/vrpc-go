@@ -27,7 +27,7 @@ func (e *InvocationError) Unwrap() error {
 }
 
 // ProtocolError indicates a missing or malformed protocol response.
-// Metadata preserves HTTP status, headers, and any decoded metadata.
+// Metadata preserves the HTTP status, headers, and any decoded protocol metadata.
 type ProtocolError struct {
 	Metadata *ResponseMetadata
 	Cause    error

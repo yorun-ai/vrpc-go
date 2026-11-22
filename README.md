@@ -10,21 +10,21 @@ A standalone Go client for [vRPC](https://github.com/yorun-ai/vrpc-ts), compatib
 
 **English** | [简体中文](README.zh-CN.md)
 
-- Module: `go.yorun.ai/vrpc`; package: `vrpc`.
-- Go 1.27 or later. Built-in JSON and CBOR/Binary support (fxamacker/cbor).
-- No dependency on Vine, application lifecycle, DI, actor registry, or framework logger.
-- Apache License 2.0. The public API is stabilizing before v1.0.0.
+- Module `go.yorun.ai/vrpc`, package `vrpc`.
+- Requires Go 1.27 or later. JSON and CBOR/Binary encoding are built in. CBOR uses fxamacker/cbor.
+- The client does not depend on Vine, the application lifecycle, dependency injection, an actor registry, or a framework logger.
+- Apache License 2.0. The public API is still stabilizing before v1.0.0.
 
-## Try the client
+## Getting started
 
-Clone [yorun-ai/vrpc-go](https://github.com/yorun-ai/vrpc-go) and run `go test ./...`.
-The import path `go.yorun.ai/vrpc` resolves to this repository. Install it with:
+The module path `go.yorun.ai/vrpc` resolves to this repository. Install it with:
 
 ```sh
 go get go.yorun.ai/vrpc@v0.17.0
 ```
 
-To try the checkout before publication, use a local replacement from a consuming module:
+The repository can be cloned from [yorun-ai/vrpc-go](https://github.com/yorun-ai/vrpc-go) and tested with `go test ./...`.
+To use an unpublished checkout, add a local replacement in the consuming module:
 
 ```sh
 go mod edit -require=go.yorun.ai/vrpc@v0.0.0
@@ -38,7 +38,7 @@ client, err := vrpc.NewClient(vrpc.Option{
     Identity: vrpc.Identity{
         Name: "demo.client",
         Version: "1.0.0",
-        InstanceID: "123e4567-e89b-12d3-a456-426614174001",
+        InstanceID: uuid.MustParse("123e4567-e89b-12d3-a456-426614174001"),
     },
     Authorization: map[string]string{
         "key": token,
@@ -69,24 +69,25 @@ result, metadata, err := client.InvokeAs[User](ctx, methodInfo,
     struct { ID int64 `json:"id"` }{ID: 42})
 ```
 
-`client.InvokeAs[T]` returns the decoded result, response metadata and an error.
-Use `client.InvokeAs[struct{}]` for methods without a result.
+`client.InvokeAs[T]` returns the decoded result, response metadata, and an error.
+Methods without a result use `client.InvokeAs[struct{}]`.
 
 `client.InvokeRaw(ctx, service, method, params, options...)` invokes an unregistered
-method using JSON and returns `(any, *ResponseMetadata, error)`. JSON objects decode
+method with JSON and returns `(any, *ResponseMetadata, error)`. JSON objects decode
 to `map[string]any`, arrays to `[]any`, and numbers to `float64`.
 
-On failure, `InvokeAs[T]` returns the zero value of `T` and `InvokeRaw` returns nil; metadata remains available
-when an HTTP response was received.
+On failure, `InvokeAs[T]` returns the zero value of `T` and `InvokeRaw` returns nil.
+Response metadata remains available when an HTTP response was received.
 
-Import `context`, `fmt` and `go.yorun.ai/vrpc`. The example uses the caller's `ctx` and `token`.
-Use your service's exact contract names. `Endpoint` includes the invocation prefix;
-the client appends `/<service>/<method>` and does not automatically add `/invoke`.
+The example assumes that `context`, `fmt`, `uuid`, and `go.yorun.ai/vrpc` are imported,
+and that `ctx` and `token` are defined by the caller. Service, method, and field names
+must match the server contract. `Endpoint` is the invocation URL prefix and includes
+`/invoke` when it is part of the route; the client appends `/<service>/<method>`.
 
-A complete command-line example is included:
+The repository also provides a command-line example:
 
 ```sh
-# Set PORTAL_KEY in your environment for authenticated calls.
+# Set PORTAL_KEY in the environment for authenticated calls.
 go run ./examples/portal -endpoint https://api.example.com/invoke \
   -client-name demo.client -client-version 1.0.0 \
   -client-instance-id 123e4567-e89b-12d3-a456-426614174001 \
@@ -95,46 +96,48 @@ go run ./examples/portal -endpoint https://api.example.com/invoke \
 
 ## Configuration and behavior
 
-`Identity.Name`, `Identity.Version` and `Identity.InstanceID` are required.
-Missing or invalid values cause client construction to fail.
-Use lowercase letters separated by dots for the name and a full semantic version.
-The instance UUID is stable for that client. Each call creates a trace and span;
-`vrpc.WithTrace(parent)` preserves a parent trace ID and creates a child span.
+`Identity.Name` requires lowercase letters separated by dots, and `Identity.Version`
+requires a complete semantic version. Each client should use a stable
+`Identity.InstanceID`.
 
-`Option.Timeout` defaults to 30 seconds. `vrpc.WithTimeout(duration)` overrides
-it for a call; an earlier context deadline takes precedence. The remaining
-duration is sent in `vrpc-options`. Current Portal defaults to 30 seconds and
-rejects values above 120 seconds. The client does not hardcode that gateway limit.
+Each call creates a trace and span. `vrpc.WithTrace(parent)` preserves the parent
+trace ID and creates a child span.
 
-Client cancellation stops waiting, but Portal may continue execution until its
-own deadline. The client does not add invocation retries or follow redirects.
-Custom transports are responsible for their own behavior. No idempotency header
-is added. Framework Actor and Initiator values are not synthesized by the client.
+`Option.Timeout` defaults to 30 seconds. `vrpc.WithTimeout(duration)` overrides it for
+one call, and an earlier context deadline takes precedence. The remaining duration is
+sent in `vrpc-options`. The current Portal defaults to 30 seconds and rejects values
+above 120 seconds; this client does not hardcode that gateway limit.
 
-Set fixed credentials through `Option.Authorization`. They are encoded once when
-the client is created; later changes to the map do not affect it. A non-nil map
-overrides `Headers["Authorization"]`; an empty map removes that header, while nil
-leaves the custom header unchanged. `EncodeCredentials` formats
-Portal fields as `field value, field value` in sorted order; it rejects commas,
-control characters, empty values, and case-insensitive duplicate field names.
-It does not assume Bearer authentication or authenticate locally.
+Canceling a call stops the client from waiting, but Portal may continue execution until
+its own deadline. The client does not retry invocations, follow redirects, add an
+idempotency header, or synthesize framework Actor and Initiator values. The caller is
+responsible for a custom transport's behavior.
 
-`Headers` accepts additional HTTP headers, preserving multiple values, and is copied at construction.
-Client-generated headers override custom values with the same name. `Transport` accepts
-an `http.RoundTripper` for custom TLS or networking; the caller owns its lifecycle.
-Clients support concurrent calls when their custom transport does too.
+Fixed credentials are set through `Option.Authorization` and encoded once when the
+client is created; later changes to the map do not affect the client. A non-nil map
+overrides `Headers["Authorization"]`; an empty map removes that header, and nil leaves
+the custom header unchanged. `EncodeCredentials` formats Portal fields as
+`field value, field value` in sorted order and rejects commas, control characters,
+empty values, and case-insensitive duplicate field names. It neither assumes Bearer
+authentication nor authenticates requests locally.
+
+`Headers` accepts additional HTTP headers and preserves multiple values; it is copied
+at construction. Client-generated headers override custom values with the same name.
+`Transport` accepts an `http.RoundTripper` for custom TLS or networking, and the caller
+owns its lifecycle. A client supports concurrent calls when its transport is safe for
+concurrent use.
 
 ## Client registry
 
-`Registry` stores client service and method contracts. It has no server registration,
-executors, DI or service discovery.
-Registration copies the method descriptors, rejects duplicates and publishes a service
-atomically; concurrent calls and registration are supported.
+`Registry` stores client service and method contracts. It does not provide server
+registration, executors, dependency injection, or service discovery. Registration
+copies method descriptors, rejects duplicates, and publishes a service atomically;
+concurrent registration and lookup are supported.
 
-This is the registration API intended for generated client packages:
+Generated client packages and hand-written callers use the following registration API:
 
 ```go
-// In a generated client package; imports go.yorun.ai/vrpc.
+// In a generated client package that imports go.yorun.ai/vrpc.
 func init() {
     vrpc.Register(&vrpc.ServiceSpec{
         SkelName: "demo.Files",
@@ -146,112 +149,113 @@ func init() {
 }
 ```
 
-Resolve `MethodInfo` once with `GetMethodInfo`, check the returned boolean, and pass
+Look up the `MethodInfo` once with `GetMethodInfo`, check the returned boolean, and pass
 the descriptor directly to `client.InvokeAs[T](ctx, methodInfo, params, options...)`.
-When a missing method is an initialization error, use
-`methodInfo := vrpc.MustGetMethodInfo("demo.Files", "upload")` instead; the registry
-also provides `registry.MustGetMethodInfo`. Both panic with the service and method
-names if the contract is missing.
+A generated client can retain the descriptor after package initialization. The
+descriptor contains the service name, method name, invocation path, and binary flags.
+Invocations do not consult the registry, and an empty descriptor is rejected before a
+request is sent.
 
-Generated clients can retain the descriptor after package initialization. A descriptor
-contains the service name, method name, invocation path and binary flags. Invocations do not
-look up the registry; an empty descriptor is rejected before sending a request.
+When a missing method should be treated as an initialization error, use
+`methodInfo := vrpc.MustGetMethodInfo("demo.Files", "upload")` instead; `Registry` also
+provides `registry.MustGetMethodInfo`. Both functions panic with the service and method
+names when the contract is missing.
 
-Request and response encoding are selected independently: binary arguments use CBOR;
-binary results advertise CBOR and JSON in `Accept`. Other arguments/results use JSON.
-Both codecs are built in, with no codec imports or configuration required.
+Request and response encoding are selected independently. Binary arguments use CBOR,
+and binary results advertise CBOR and JSON in `Accept`; other arguments and results use
+JSON. Both codecs are built in and require no codec imports or configuration.
 
-`ServiceSpec.Name` and `MethodSpec.Name` store Go names, exposed through
+`ServiceSpec.Name` and `MethodSpec.Name` store Go names, which are exposed through
 `MethodInfo.ServiceName()` and `Name()`. Routing continues to use `SkelName`.
 
-`MethodSpec.ArgumentsSensitive` and `ResultSensitive` mark sensitive payloads.
-Their corresponding `MethodInfo` accessors let logging and diagnostics inspect
-these flags; they do not change encoding or automatically redact payloads.
+`MethodSpec.ArgumentsSensitive` and `ResultSensitive` mark sensitive payloads. The
+matching `MethodInfo` accessors expose these flags to logging and diagnostics; the
+flags do not affect encoding or redact payloads automatically.
 
-Use `NewRegistry` for isolated contracts, or package-level `Register`/`GetMethodInfo`
-for the default registry. Clients can invoke descriptors from either without registry
-configuration. `Register` has no return value and panics on invalid or duplicate
-registration.
+Use `NewRegistry` for an isolated contract set, or use the package-level `Register` and
+`GetMethodInfo` for the default registry. A client can use a descriptor from either
+registry without additional configuration. `Register` returns no value and panics on
+invalid or duplicate registration.
 
 skelc's Go API client generator targets this standalone runtime; generated backend
 packages use Vine.
 
 ## JSON and Binary
 
-JSON is the default. Typed structs with `json` tags preserve Go integer precision.
-An `any`/map result follows standard JSON decoding rules; use typed fields when
-integer precision matters. Nil slices/maps encode as empty collections under
-`encoding/json/v2`, matching current Vine encoding. Hand-written callers also register a method contract and obtain its descriptor.
+JSON is the default encoding. Typed structs with `json` tags preserve Go integer
+precision. An `any` or map result follows standard JSON decoding rules; use typed
+fields when integer precision matters. Under `encoding/json/v2`, nil slices and maps
+encode as empty collections, matching current Vine behavior.
 
-For Binary arguments/results, register the method's binary flags as shown above.
-`[]byte` uses CBOR byte strings, integer map keys remain integers, and nil collections
-encode as empty collections. Use matching `json` and `cbor` field names; fxamacker also
-falls back to `json` tags. JSON responses remain accepted for binary-result methods,
-including Portal errors. Calls that only advertise JSON reject CBOR responses.
-Compression is handled
-by the transport: the default Go transport negotiates and decodes gzip. No zstd
-support is advertised by this package.
+For binary arguments or results, register the method's binary flags as shown above.
+`[]byte` values use CBOR byte strings, integer map keys remain integers, and nil
+collections encode as empty collections. Use matching `json` and `cbor` field names.
+When no `cbor` tag is present, fxamacker/cbor falls back to `json` tags. Methods with
+binary results still accept JSON responses, including Portal errors. Calls that
+advertise only JSON in `Accept` reject CBOR responses. Compression is handled by the
+transport, and the default Go transport
+negotiates and decodes gzip. This package does not advertise zstd support.
 
 ## Errors and metadata
 
-A call succeeds only with HTTP 2xx and `vrpc-status: OK`. On success, the response
-must have valid `content-type`, `vrpc-status`, `vrpc-server`, and an envelope with
-a result and no error. Unknown uppercase status codes remain observable for
-forward compatibility.
+A call succeeds only when the response has HTTP 2xx status, its required headers
+(`content-type`, `vrpc-status`, and `vrpc-server`) are valid, `vrpc-status` is `OK`, and
+the envelope contains a result but no error. Unrecognized uppercase status codes remain
+available in the metadata for forward compatibility.
 
 - `*vrpc.InvocationError` preserves a failing remote status or non-2xx HTTP response,
   an optional `ErrorPayload`, and any decoding failure in `Cause`.
-- `*vrpc.ProtocolError` identifies malformed successful responses.
-- Transport/context errors wrap their causes; use `errors.Is` for
-  cancellation/deadline errors and `errors.As` for structured errors.
+- `*vrpc.ProtocolError` identifies a malformed successful response.
 
-`vrpc.ErrorPayload` aliases the shared `transport/http.ErrorPayload`, containing
-`Code`, `Message`, `Reason`, and `Detail`.
+Transport and context errors wrap their causes. Use `errors.Is` for cancellation and
+deadline errors and `errors.As` for structured errors.
 
-`ResponseMetadata` exposes HTTP status, protocol status, server identity and response headers.
-Read `portal-trace-id` from `ResponseMetadata.Header` when needed. Classify remote outcomes by `ResponseMetadata.Status`,
-not message text or the auxiliary payload's `Code`. The shared transport limits response bodies
-to 128 MiB after transport decompression. No response body is
-included in protocol error messages.
+`vrpc.ErrorPayload` is an alias of the shared `transport/http.ErrorPayload`, which
+contains `Code`, `Message`, `Reason`, and `Detail`.
+
+`ResponseMetadata` exposes HTTP status, protocol status, server identity, and response
+headers. Read `portal-trace-id` from `ResponseMetadata.Header` when needed, and
+classify remote outcomes by `ResponseMetadata.Status` rather than by message text or
+the auxiliary `Code` field. The shared transport limits response bodies to 128 MiB
+after decompression. Protocol error messages do not include the response body.
 
 ## Shared transport
 
-`transport/http` provides wire constants, header checks, timeout handling,
-JSON/CBOR request and response codecs, body limits and the HTTP exchange lifecycle.
-Adapters pass Go values to `EncodeRequest` and `EncodeResponse`, with errors represented
-by `*ErrorPayload`. They decode arguments with `DecodeRequest`, and use `DecodeResponse`
-with `ResponsePayload.Unmarshal` for results and `ResponsePayload.DecodeError` for errors.
-These operations use fixed wire rules: nil collections
-encode as empty collections, and decoding rejects duplicate keys.
-Adapters retain transport configuration, application metadata and error policy.
-Raw envelope helpers preserve encoded payloads; `ResponsePayload.EncodeWithError`
-replaces an error without decoding and re-encoding the result.
+`transport/http` provides protocol constants, header validation, timeout handling,
+JSON/CBOR request and response codecs, body limits, and the HTTP exchange lifecycle.
+Adapters pass Go values to `EncodeRequest` and `EncodeResponse`, representing errors
+as `*ErrorPayload`. They decode arguments with `DecodeRequest` and use
+`DecodeResponse` with `ResponsePayload.Unmarshal` for results or
+`ResponsePayload.DecodeError` for errors. These operations follow fixed wire rules:
+nil collections encode as empty collections, and decoding rejects duplicate keys.
+Adapters retain transport configuration, application metadata, and error policy. Raw
+envelope helpers preserve encoded payloads; `ResponsePayload.EncodeWithError` replaces
+an error without decoding and re-encoding the result.
 
-`ReadRequestBody` limits the complete encoded request envelope to 32 MiB for
-JSON and 128 MiB for CBOR, selected by `Content-Type`. It checks both the declared
-length and bytes read, including requests without a known length. The response
-limit remains 128 MiB. `RequestBodyLimit` exposes the encoding-specific limit;
-the former `MaxRequestBodyBytes` constant is removed. Migrate fixed-limit callers
-to `MaxJSONRequestBodyBytes` or `MaxCBORRequestBodyBytes`. These are fixed
-transport limits, not client options. Receiving servers must use the updated
-transport to accept larger CBOR requests.
+`ReadRequestBody` limits the complete encoded request envelope to 32 MiB for JSON and
+128 MiB for CBOR, selected by `Content-Type`. It checks both the declared length and
+the bytes read, including requests with no declared length. The response limit remains
+128 MiB. `RequestBodyLimit` returns the limit for an encoding. `MaxRequestBodyBytes`
+has been removed; callers that used it should switch to `MaxJSONRequestBodyBytes` or
+`MaxCBORRequestBodyBytes`. These limits are fixed by the transport and are not client
+options. A receiving server must use the updated `transport/http` to accept CBOR
+requests larger than 32 MiB.
 
 ## Compatibility and scope
 
-Tests cover client invocation, headers, errors, cancellation and the shared
-JSON/CBOR wire implementation. Portal integration and gateway policy tests
-belong to Vine.
+Tests cover client invocation, headers, errors, cancellation, and the shared JSON/CBOR
+wire implementation. Portal integration and gateway policy tests belong to Vine.
 
-The client supports hand-written request/result types and skelc-generated Go API
-clients. Generated backend service clients use Vine. Vine consumes the shared
-transport through its framework adapter. The client does not implement Portal `/inspect`.
+The client supports hand-written request and result types and skelc-generated Go API
+clients. Generated backend service clients use Vine. Vine consumes the shared transport
+through its framework adapter. The client does not implement Portal `/inspect`.
 
 ## Package layout
 
-The root `api.go` exposes the client API through type aliases and ordinary function
-wrappers. Client, registry, credentials and protocol metadata are implemented
-in `internal`; consumers continue to import `go.yorun.ai/vrpc`.
-`transport/http` remains public for cross-module reuse by Vine.
+The root `api.go` exposes the client API through type aliases and function wrappers.
+Client, registry, credential, and protocol metadata implementations live in `internal`,
+while consumers continue to import `go.yorun.ai/vrpc`. `transport/http` remains public
+for cross-module reuse by Vine.
 
 ## Development
 
@@ -265,6 +269,12 @@ See [AGENTS.md](AGENTS.md) for repository boundaries.
 
 ## Skel scalar types
 
-The `go.yorun.ai/skel/types` (imported as `skeltype`) package provides Decimal, Binary, Timestamp, Duration, LocalDate, LocalTime, LocalDateTime and JSON types and their constructors. vRPC reuses these types and their JSON/CBOR encodings; `go.yorun.ai/vrpc/skel` is no longer provided. Their representations match Vine contracts, including decimal scale and string-based date/time values. Generated API clients and hand-written callers use the same types without depending on Vine.
+The `go.yorun.ai/skel/types` package (imported as `skeltype`) provides Decimal, Binary,
+Timestamp, Duration, LocalDate, LocalTime, LocalDateTime, and JSON types and their
+constructors. vRPC reuses these types and their JSON/CBOR encodings; the separate
+`go.yorun.ai/vrpc/skel` package is no longer provided. Their representations, including
+decimal scale and string-based date/time values, match Vine contracts. Generated API
+clients and hand-written callers use the same types without depending on Vine.
 
-UUID uses the native `uuid.UUID` type. The shared `go.yorun.ai/skel/types/codec` JSON/CBOR codecs encode UUID values and map keys as strings; the legacy `skeltype.UUID` remains supported.
+The shared `go.yorun.ai/skel/types/codec` encodes UUID values and map keys as
+strings in JSON and CBOR. It supports both `uuid.UUID` and `skeltype.UUID`.

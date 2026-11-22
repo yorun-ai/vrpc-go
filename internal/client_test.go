@@ -14,6 +14,7 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+	"uuid"
 
 	"github.com/fxamacker/cbor/v2"
 	rpchttp "go.yorun.ai/vrpc/transport/http"
@@ -536,12 +537,12 @@ func testClientIdentity() Identity {
 	return Identity{
 		Name:       "demo.client",
 		Version:    "1.0.0",
-		InstanceID: "123e4567-e89b-12d3-a456-426614174001",
+		InstanceID: uuid.MustParse("123e4567-e89b-12d3-a456-426614174001"),
 	}
 }
 
 func TestClientRequiresIdentity(t *testing.T) {
-	for _, field := range []string{"all", "name", "version", "instance"} {
+	for _, field := range []string{"all", "name", "version"} {
 		t.Run(field, func(t *testing.T) {
 			identity := testClientIdentity()
 			switch field {
@@ -551,8 +552,6 @@ func TestClientRequiresIdentity(t *testing.T) {
 				identity.Name = ""
 			case "version":
 				identity.Version = ""
-			case "instance":
-				identity.InstanceID = ""
 			}
 
 			client, err := NewClient(Option{

@@ -10,21 +10,21 @@
 
 [English](README.md) | **简体中文**
 
-- Module：`go.yorun.ai/vrpc`；包名：`vrpc`。
-- 要求 Go 1.27 或更高版本，内置 JSON 和 CBOR/Binary 支持（依赖 fxamacker/cbor）。
-- 不依赖 Vine、应用生命周期、DI、Actor 注册表或框架日志。
-- Apache License 2.0。公共 API 在 v1.0.0 前仍处于稳定化阶段。
+- 模块路径 `go.yorun.ai/vrpc`，包名 `vrpc`。
+- 要求 Go 1.27 或更高版本。内置 JSON 与 CBOR/Binary 编码，其中 CBOR 使用 fxamacker/cbor。
+- 客户端不依赖 Vine、应用生命周期、依赖注入、Actor 注册表或框架日志。
+- Apache License 2.0。公共 API 在 v1.0.0 之前仍处于稳定化阶段。
 
-## 试用
+## 开始使用
 
-克隆 [yorun-ai/vrpc-go](https://github.com/yorun-ai/vrpc-go)，运行 `go test ./...`。
-导入路径 `go.yorun.ai/vrpc` 已映射到本仓库。可通过以下命令安装：
+模块路径 `go.yorun.ai/vrpc` 映射到本仓库。安装命令如下：
 
 ```sh
 go get go.yorun.ai/vrpc@v0.17.0
 ```
 
-发布前试用当前源码，可在调用方 module 中使用本地替换：
+可从 [yorun-ai/vrpc-go](https://github.com/yorun-ai/vrpc-go) 克隆本仓库，并运行 `go test ./...` 验证。
+如需使用尚未发布的源码，可在调用方模块中添加本地替换：
 
 ```sh
 go mod edit -require=go.yorun.ai/vrpc@v0.0.0
@@ -38,7 +38,7 @@ client, err := vrpc.NewClient(vrpc.Option{
     Identity: vrpc.Identity{
         Name: "demo.client",
         Version: "1.0.0",
-        InstanceID: "123e4567-e89b-12d3-a456-426614174001",
+        InstanceID: uuid.MustParse("123e4567-e89b-12d3-a456-426614174001"),
     },
     Authorization: map[string]string{
         "key": token,
@@ -69,60 +69,65 @@ result, metadata, err := client.InvokeAs[User](ctx, methodInfo,
     struct { ID int64 `json:"id"` }{ID: 42})
 ```
 
-导入 `context`、`fmt` 和 `go.yorun.ai/vrpc`；示例的 `ctx`、`token` 由调用方提供。
-服务名、方法名和字段名应使用实际契约中的名称。`Endpoint` 包含调用前缀；客户端追加
-`/<service>/<method>`，不会自动添加 `/invoke`。
+`client.InvokeAs[T]` 返回解码后的结果、响应元数据和错误。无返回值的方法使用
+`client.InvokeAs[struct{}]`。
 
-仓库提供完整的命令行示例：
+`client.InvokeRaw(ctx, service, method, params, options...)` 以 JSON 调用未注册的方法，
+返回 `(any, *ResponseMetadata, error)`。JSON 对象解码为 `map[string]any`，数组解码为
+`[]any`，数字解码为 `float64`。
+
+调用失败时，`InvokeAs[T]` 返回 `T` 的零值，`InvokeRaw` 返回 nil；若已收到 HTTP 响应，
+响应元数据仍然可用。
+
+示例假定已导入 `context`、`fmt`、`uuid` 和 `go.yorun.ai/vrpc`，且 `ctx` 与 `token`
+由调用方定义。服务名、方法名和字段名必须与服务端契约一致。`Endpoint` 是调用地址前缀，
+路由包含 `/invoke` 时也应包含在内；客户端会追加 `/<service>/<method>`。
+
+仓库还提供一个命令行示例：
 
 ```sh
-# 认证调用通过环境变量 PORTAL_KEY 提供 key 凭据。
+# 认证调用需要设置环境变量 PORTAL_KEY。
 go run ./examples/portal -endpoint https://api.example.com/invoke \
   -client-name demo.client -client-version 1.0.0 \
   -client-instance-id 123e4567-e89b-12d3-a456-426614174001 \
   -service demo.UserService -method Get -params '{"id":42}'
 ```
 
-`client.InvokeAs[T]` 返回业务结果、响应元数据和错误；无返回值的方法使用 `client.InvokeAs[struct{}]`。
-
-`client.InvokeRaw(ctx, service, method, params, options...)` 无需注册方法，使用 JSON
-调用并返回 `(any, *ResponseMetadata, error)`。JSON 对象解码为 `map[string]any`，
-数组为 `[]any`，数字为 `float64`。
-
-失败时 `InvokeAs[T]` 返回 `T` 的零值，`InvokeRaw` 返回 nil；收到 HTTP 响应时仍保留元数据。
-
 ## 配置与行为
 
-`Identity.Name`、`Identity.Version` 和 `Identity.InstanceID` 必须显式提供。
-任一字段缺失或格式无效，创建客户端时直接返回错误。
-名称使用小写字母及点分隔，版本使用完整语义版本。每个 client 保持固定实例 UUID；每次调用生成 trace/span。
-`vrpc.WithTrace(parent)` 保留父 trace ID，并创建新的调用 span。
+`Identity.Name` 要求使用以点分隔的小写字母，`Identity.Version` 要求完整的语义版本。每个客户端
+应使用固定的 `Identity.InstanceID`。
 
-`Option.Timeout` 默认 30 秒，`vrpc.WithTimeout(duration)` 可覆盖单次调用；context 中更早的 deadline 优先。
-剩余时间通过 `vrpc-options` 传递。当前 Portal 默认 30 秒，拒绝超过 120 秒的值；客户端不硬编码网关上限。
+每次调用都会创建 trace 和 span。`vrpc.WithTrace(parent)` 保留父 trace ID，并创建子 span。
 
-取消客户端请求只停止等待，Portal 可能继续执行直到自己的 deadline。客户端不增加调用重试、不跟随重定向；
-自定义 transport 的行为由调用方负责。不添加幂等 header，也不构造框架 Actor、Initiator。
+`Option.Timeout` 默认为 30 秒。`vrpc.WithTimeout(duration)` 覆盖单次调用的超时，context
+中更早的 deadline 优先。剩余时长通过 `vrpc-options` 传递。Portal 当前默认 30 秒，并拒绝
+超过 120 秒的值；本客户端不硬编码该网关上限。
 
-固定凭据通过 `Option.Authorization` 传入，创建客户端时编码一次，之后修改 map 不影响客户端。
-非 nil map 覆盖 `Headers["Authorization"]`；空 map 删除该头，nil 则保留自定义头。
-`EncodeCredentials` 按字段名排序，生成 `field value, field value`；拒绝逗号、控制字符、空值和大小写不敏感的重名字段。
-它不默认使用 Bearer，也不在本地执行认证。
+取消调用后，客户端会停止等待，但 Portal 仍可能继续执行至其自身的 deadline。客户端不重试
+调用、不跟随重定向、不添加幂等 header，也不构造框架的 Actor 与 Initiator 值。自定义
+transport 的行为由调用方负责。
 
-`Headers` 接受额外的 HTTP header 并保留多个值，构造 client 时复制；客户端生成的 header 会覆盖同名自定义值。
-`Transport` 接受 `http.RoundTripper`，可定制 TLS 和网络行为，生命周期由调用方管理。
-自定义 transport 支持并发时，client 可并发调用。
+固定凭据通过 `Option.Authorization` 设置，并在创建客户端时编码一次；此后修改 map 不会
+影响该客户端。非 nil 的 map 覆盖 `Headers["Authorization"]`；空 map 删除该 header，nil
+则保留自定义 header。`EncodeCredentials` 按字段名排序，生成
+`field value, field value`，并拒绝逗号、控制字符、空值以及大小写不敏感的重复字段名。
+该函数不假定采用 Bearer 认证，也不在本地执行认证。
 
-## 客户端 registry
+`Headers` 接受额外的 HTTP header，并保留多个值；该字段在创建客户端时被复制。客户端生成的
+同名 header 会覆盖自定义值。`Transport` 接受 `http.RoundTripper`，可用于自定义 TLS 或
+网络行为；其生命周期由调用方管理。当自定义 transport 可安全用于并发时，客户端也支持并发
+调用。
 
-`Registry` 只保存客户端服务和方法契约，不包含服务端注册、执行器、DI 或服务发现。
-注册会复制方法描述、拒绝重复注册，并原子地发布服务；
-支持并发调用和注册。
+## 客户端注册表
 
-为生成客户端提供的注册接口如下：
+`Registry` 保存客户端的服务与方法契约。它不提供服务端注册、执行器、依赖注入或服务发现。
+注册时会复制方法描述符、拒绝重复项，并以原子方式发布服务；注册与查询均支持并发。
+
+以下注册接口供生成的客户端包和手写调用方使用：
 
 ```go
-// 位于生成的客户端包中，导入 go.yorun.ai/vrpc。
+// 位于导入 go.yorun.ai/vrpc 的生成客户端包中。
 func init() {
     vrpc.Register(&vrpc.ServiceSpec{
         SkelName: "demo.Files",
@@ -134,89 +139,95 @@ func init() {
 }
 ```
 
-通过 `GetMethodInfo` 获取一次方法描述，检查返回的布尔值，再直接调用
-`client.InvokeAs[T](ctx, methodInfo, params, options...)`。生成客户端可以在包初始化后保存它。
-描述包含服务名、方法名、请求路径和 binary 标志；调用时不再查询 registry，空描述会在发送前被拒绝。
+通过 `GetMethodInfo` 获取一次 `MethodInfo`，检查返回的布尔值，然后将描述符直接传给
+`client.InvokeAs[T](ctx, methodInfo, params, options...)`。生成的客户端可以在包初始化后
+保留该描述符。描述符包含服务名、方法名、调用路径和 binary 标志。调用时不会查询注册表，
+空描述符会在发送请求前被拒绝。
 
-如果缺少方法属于初始化错误，可以直接使用
-`methodInfo := vrpc.MustGetMethodInfo("demo.Files", "upload")`；独立 registry 也提供
-`registry.MustGetMethodInfo`。查不到时，两者都会 panic，并包含服务名和方法名。
+若方法缺失应视为初始化错误，可改用
+`methodInfo := vrpc.MustGetMethodInfo("demo.Files", "upload")`；`Registry` 实例也提供
+`registry.MustGetMethodInfo`。契约缺失时，两者都会 panic，并在 panic 信息中包含服务名和
+方法名。
 
-请求与响应独立选择编码：参数含 binary 时使用 CBOR，返回值含 binary 时通过 `Accept`
-接受 CBOR 和 JSON；其他情况使用 JSON。两种编码均已内置，无需导入或配置 codec。
+请求编码与响应编码独立选择。参数含 binary 类型时使用 CBOR；结果含 binary 类型时，在
+`Accept` 中声明 CBOR 和 JSON；其他参数与结果使用 JSON。两种编解码器均已内置，无需额外
+导入或配置。
 
-需要隔离时使用 `NewRegistry`，默认 registry 则使用包级 `Register`/`GetMethodInfo`。
-客户端可以直接使用任一 registry 返回的描述，不需要 registry 配置。
+`ServiceSpec.Name` 与 `MethodSpec.Name` 保存 Go 名称，可通过 `MethodInfo.ServiceName()`
+和 `Name()` 读取。路由仍使用 `SkelName`。
 
-`ServiceSpec.Name` 和 `MethodSpec.Name` 保存 Go 名称，通过
-`MethodInfo.ServiceName()` 和 `Name()` 读取；路由仍使用 `SkelName`。
+`MethodSpec.ArgumentsSensitive` 和 `ResultSensitive` 标记敏感载荷，对应的 `MethodInfo`
+访问器向日志和诊断功能提供这些标志。这些标志不改变编码方式，也不会自动脱敏。
 
-`MethodSpec.ArgumentsSensitive` 和 `ResultSensitive` 标记参数及结果是否敏感，
-日志和诊断功能可通过 `MethodInfo` 的同名方法读取；这些标记不改变编码，也不会自动脱敏。
+需要相互隔离的契约集合时，可使用 `NewRegistry`；默认注册表使用包级 `Register` 与
+`GetMethodInfo`。客户端可以使用任一注册表返回的描述符，无需额外配置。`Register` 没有
+返回值，对无效或重复注册会 panic。
 
-`Register` 无返回值，对无效或重复注册直接 panic。
-
-skelc 的 Go API 客户端生成器使用本独立运行时；生成的后端包使用 Vine。
+skelc 的 Go API 客户端生成器面向本独立运行时；生成的后端包使用 Vine。
 
 ## JSON 与 Binary
 
-默认使用 JSON。带 `json` 标签的具体类型保留 Go 整数精度；`any`/map 遵循标准 JSON 解码规则，
-需要完整整数精度时使用具体类型字段。`encoding/json/v2` 将 nil slice/map 编码为空集合，与当前 Vine 行为一致。手写调用也需要注册方法契约并取得描述。
+默认编码为 JSON。带 `json` 标签的结构体保留 Go 整数精度；`any` 或 map 结果遵循标准
+JSON 解码规则，需要整数精度时应使用具体类型的字段。在 `encoding/json/v2` 下，nil slice
+与 map 编码为空集合，与当前 Vine 行为一致。
 
-Binary 参数或结果按前述示例注册方法的 binary 标志即可。`[]byte` 使用 CBOR byte string，
-整数 map key 保持整数，nil 集合编码为空集合。使用一致的 `json` 和 `cbor` 字段名；
-fxamacker 也会回退到 `json` tag。返回值含 binary 的方法仍接受 JSON 响应，包括 Portal 错误。
-仅声明接受 JSON 的调用会拒绝 CBOR 响应。压缩由 transport 处理，默认 Go transport 支持
-协商和解码 gzip；本库不声明 zstd 支持。
+参数或结果含 binary 时，按上述示例注册方法的 binary 标志。`[]byte` 使用 CBOR byte
+string，整数 map key 保持整数，nil 集合编码为空集合。`json` 与 `cbor` 字段名应保持一致；
+没有 `cbor` 标签时，fxamacker/cbor 会回退到 `json` 标签。结果含 binary 的方法仍接受
+JSON 响应，包括 Portal 错误；在 `Accept` 中只声明 JSON 的调用会拒绝 CBOR 响应。压缩由
+传输层处理，默认 Go transport 会协商并解码 gzip。本包不声明支持 zstd。
 
 ## 错误与元数据
 
-成功需要 HTTP 2xx 和 `vrpc-status: OK`，有效的 `content-type`、`vrpc-status`、`vrpc-server`，以及包含 result 且没有 error 的响应信封。
-未知的大写状态码仍会保留，便于向前兼容。
+调用成功的条件为：HTTP 状态为 2xx，必需的 header（`content-type`、`vrpc-status` 和
+`vrpc-server`）均有效，`vrpc-status` 为 `OK`，且响应信封包含 result 而不包含 error。
+无法识别的大写状态码仍会保留在元数据中，以支持向前兼容。
 
-- `*vrpc.InvocationError` 保存远端失败状态或非 2xx 响应、可选的 `ErrorPayload`，并在 `Cause` 中保留解码失败。
-- `*vrpc.ProtocolError` 表示成功响应的协议格式错误。
-- transport 和 context 错误保留原始原因；用 `errors.Is` 判断取消、超时，用 `errors.As` 读取结构化错误。
+- `*vrpc.InvocationError` 保留远端失败状态或非 2xx HTTP 响应、可选的 `ErrorPayload`，以及
+  `Cause` 中的解码失败。
+- `*vrpc.ProtocolError` 表示成功响应存在格式错误。
 
-`vrpc.ErrorPayload` 是共享结构 `transport/http.ErrorPayload` 的别名，包含
-`Code`、`Message`、`Reason`、`Detail`。
+传输层与 context 错误会包装原始原因。使用 `errors.Is` 判断取消和超时错误，使用
+`errors.As` 读取结构化错误。
 
-`ResponseMetadata` 提供 HTTP 状态、协议状态、server identity 和响应 header。
-需要时可从 `ResponseMetadata.Header` 读取 `portal-trace-id`。
-远端结果以 `ResponseMetadata.Status` 为准，不依赖消息文本或错误体里的辅助 `Code`。
-共享 transport 将解压后的响应体限制为 128 MiB；协议错误文本不包含原始响应体。
+`vrpc.ErrorPayload` 是共享结构 `transport/http.ErrorPayload` 的别名，包含 `Code`、
+`Message`、`Reason` 和 `Detail`。
+
+`ResponseMetadata` 提供 HTTP 状态、协议状态、服务端标识和响应 header。需要时可从
+`ResponseMetadata.Header` 读取 `portal-trace-id`；判断远端结果时应以
+`ResponseMetadata.Status` 为准，而不是消息文本或辅助的 `Code` 字段。共享传输层将解压后的
+响应体限制为 128 MiB。协议错误信息不包含响应体。
 
 ## 共享传输层
 
 `transport/http` 提供协议常量、header 校验、超时处理、JSON/CBOR 请求与响应编解码、
-消息体限制和 HTTP 往返生命周期。适配层将 Go 值交给 `EncodeRequest` 和 `EncodeResponse`，
-其中错误使用 `*ErrorPayload` 表示。通过 `DecodeRequest` 解码参数，通过 `DecodeResponse`
-取得响应，再用 `ResponsePayload.Unmarshal` 解码结果、`ResponsePayload.DecodeError` 解码错误。
-这些操作采用固定协议规则：nil 集合编码为空集合，解码拒绝重复键。
-适配层继续负责传输配置、应用元数据和错误策略。
-原始信封辅助函数保留已编码的载荷；`ResponsePayload.EncodeWithError` 替换错误时，
-无需解码和重新编码结果。
+消息体限制和 HTTP 交互生命周期。适配层将 Go 值传给 `EncodeRequest` 与 `EncodeResponse`，
+错误以 `*ErrorPayload` 表示。参数通过 `DecodeRequest` 解码；结果通过 `DecodeResponse`
+取得，再用 `ResponsePayload.Unmarshal` 解码，错误则用 `ResponsePayload.DecodeError`
+解码。这些操作遵循固定的协议规则：nil 集合编码为空集合，解码拒绝重复键。适配层负责传输
+配置、应用元数据和错误策略。原始信封辅助函数保留已编码的载荷；
+`ResponsePayload.EncodeWithError` 替换错误时，无需先解码再重新编码结果。
 
-`ReadRequestBody` 根据 `Content-Type` 限制完整编码后的请求信封：JSON 为 32 MiB，
-CBOR 为 128 MiB。它同时检查声明长度和实际读取字节数，未知长度的请求也受限制。
-响应体上限仍为 128 MiB。`RequestBodyLimit` 提供按编码选择的上限；
-原有 `MaxRequestBodyBytes` 常量已删除，固定上限的调用方应迁移至
-`MaxJSONRequestBodyBytes` 或 `MaxCBORRequestBodyBytes`。这些是固定的传输层限制，
-不是客户端配置项。接收端必须使用更新后的传输层，才能接受更大的 CBOR 请求。
+`ReadRequestBody` 按 `Content-Type` 限制编码后的完整请求信封：JSON 为 32 MiB，CBOR 为
+128 MiB。它同时检查声明的长度和实际读取的字节数，未声明长度的请求也受限制。响应体上限
+仍为 128 MiB。`RequestBodyLimit` 返回指定编码的上限。`MaxRequestBodyBytes` 已删除；原先
+使用它的调用方应改用 `MaxJSONRequestBodyBytes` 或 `MaxCBORRequestBodyBytes`。这些是
+传输层的固定限制，不是客户端选项。接收端必须使用更新后的 `transport/http`，才能接受
+大于 32 MiB 的 CBOR 请求。
 
 ## 兼容性与范围
 
-测试覆盖客户端调用、header、错误、取消和共享 JSON/CBOR 协议编解码。
-Portal 集成与网关策略测试由 Vine 负责。
+测试覆盖客户端调用、header、错误、取消以及共享 JSON/CBOR 协议实现。Portal 集成与网关
+策略测试由 Vine 负责。
 
-本客户端支持手写请求、结果类型和 skelc 生成的 Go API 客户端。生成的后端 service client 使用 Vine。
-Vine 通过框架适配层使用共享 transport。本客户端不实现 Portal `/inspect`。
+本客户端支持手写请求与结果类型，以及 skelc 生成的 Go API 客户端。生成的后端服务客户端
+使用 Vine。Vine 通过其框架适配层使用共享传输层。本客户端不实现 Portal `/inspect`。
 
 ## 包结构
 
-根目录的 `api.go` 通过类型别名和普通函数转发提供客户端 API。客户端、registry、
-凭据和协议元数据的实现位于 `internal`，调用方仍导入 `go.yorun.ai/vrpc`。
-`transport/http` 保持公开，供 Vine 跨模块复用。
+根目录的 `api.go` 通过类型别名和函数包装对外提供客户端 API。客户端、注册表、凭据与协议
+元数据的实现位于 `internal`，调用方仍导入 `go.yorun.ai/vrpc`。`transport/http` 保持公开，
+供 Vine 跨模块复用。
 
 ## 开发
 
@@ -225,11 +236,16 @@ GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
 ```
 
-CI 执行客户端和共享传输层测试，不依赖 Vine。
+CI 运行客户端与共享传输层测试，不依赖 Vine。
 仓库边界见 [AGENTS.md](AGENTS.md)。
 
-## Skel 基础类型
+## Skel 标量类型
 
-`go.yorun.ai/skel/types`（导入别名 `skeltype`）提供 Decimal、Binary、Timestamp、Duration、LocalDate、LocalTime、LocalDateTime、JSON 及其构造函数。vRPC 直接复用 Skel 的类型及 JSON/CBOR 编解码，不再提供 `go.yorun.ai/vrpc/skel`。这些表示与 Vine 契约一致，包括小数精度和日期时间字符串。生成的 API 客户端与手写调用方使用同一套类型，无需依赖 Vine。
+`go.yorun.ai/skel/types`（导入别名 `skeltype`）提供 Decimal、Binary、Timestamp、
+Duration、LocalDate、LocalTime、LocalDateTime 和 JSON 类型及其构造函数。vRPC 复用这些
+类型及对应的 JSON/CBOR 编解码，不再提供独立的 `go.yorun.ai/vrpc/skel` 包。这些类型的表示形式
+与 Vine 契约一致，包括小数精度和基于字符串的日期时间值。生成的 API 客户端与手写调用方
+使用相同类型，无需依赖 Vine。
 
-UUID 使用原生 `uuid.UUID`。共享的 `go.yorun.ai/skel/types/codec` 将 UUID 值和 map key 编码为字符串，旧的 `skeltype.UUID` 仍受支持。
+共享的 `go.yorun.ai/skel/types/codec` 在 JSON 和 CBOR 中将 UUID 值和 map key 编码为
+字符串，支持 `uuid.UUID` 和 `skeltype.UUID`。

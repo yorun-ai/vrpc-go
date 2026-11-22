@@ -69,8 +69,9 @@ type _ServiceInfo struct {
 	methods map[string]MethodInfo
 }
 
-// Its zero value is ready to use. Registration and lookups are concurrency-safe.
-// A service is registered atomically and cannot be replaced.
+// Registry stores client contracts. Its zero value is ready for use, and
+// registration and lookup are concurrency-safe. A service is registered
+// atomically and cannot be replaced.
 type Registry struct {
 	mu       sync.RWMutex
 	services map[string]_ServiceInfo
@@ -94,8 +95,9 @@ func MustGetMethodInfo(serviceSkelName, methodSkelName string) MethodInfo {
 	return defaultRegistry.MustGetMethodInfo(serviceSkelName, methodSkelName)
 }
 
-// Register validates and snapshots a service before making it visible to callers.
-// Later edits to the input struct or method slice do not alter registered metadata.
+// Register validates and snapshots a service before publishing it to callers.
+// Edits to the input struct or method slice after registration do not change the
+// stored metadata.
 func (r *Registry) Register(spec *ServiceSpec) {
 	if spec == nil {
 		panic(fmt.Errorf("vrpc: nil service spec"))
