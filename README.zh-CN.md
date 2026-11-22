@@ -20,7 +20,7 @@
 模块路径 `go.yorun.ai/vrpc` 映射到本仓库。安装命令如下：
 
 ```sh
-go get go.yorun.ai/vrpc@v0.17.0
+go get go.yorun.ai/vrpc@v0.18.0
 ```
 
 可从 [yorun-ai/vrpc-go](https://github.com/yorun-ai/vrpc-go) 克隆本仓库，并运行 `go test ./...` 验证。

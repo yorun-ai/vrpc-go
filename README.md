@@ -20,7 +20,7 @@ A standalone Go client for [vRPC](https://github.com/yorun-ai/vrpc-ts), compatib
 The module path `go.yorun.ai/vrpc` resolves to this repository. Install it with:
 
 ```sh
-go get go.yorun.ai/vrpc@v0.17.0
+go get go.yorun.ai/vrpc@v0.18.0
 ```
 
 The repository can be cloned from [yorun-ai/vrpc-go](https://github.com/yorun-ai/vrpc-go) and tested with `go test ./...`.

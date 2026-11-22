@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-11-22
+
+### Changed
+
+- Use `uuid.UUID` for `vrpc.Identity.InstanceID` in client options and server
+  response metadata. HTTP identity headers continue to carry UUID text.
+- Clarify client configuration, registry usage, and transport behavior in the
+  documentation.
+
+### Upgrade Notes
+
+- Pass a `uuid.UUID` when constructing `vrpc.Identity`. Parse IDs from
+  configuration with `uuid.Parse` and use `.String()` when passing a response
+  instance ID to an API that accepts text. An omitted ID encodes as the
+  all-zero UUID.
+
 ## [0.17.0] - 2026-11-11
 
 ### Added
@@ -169,7 +185,8 @@
 - Raw Portal CLI example and isolated Portal compatibility tests covering typed and raw invocations.
 - README badges for license, version, Go, package reference and CI.
 
-[Unreleased]: https://github.com/yorun-ai/vrpc-go/compare/v0.17.0...HEAD
+[Unreleased]: https://github.com/yorun-ai/vrpc-go/compare/v0.18.0...HEAD
+[0.18.0]: https://github.com/yorun-ai/vrpc-go/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/yorun-ai/vrpc-go/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/yorun-ai/vrpc-go/compare/v0.15.1...v0.16.0
 [0.15.1]: https://github.com/yorun-ai/vrpc-go/compare/v0.15.0...v0.15.1
