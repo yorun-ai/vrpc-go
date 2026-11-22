@@ -1,5 +1,5 @@
 // Package http contains the shared vRPC HTTP wire transport.
-// Framework metadata, contract selection, actor authorization and error policies
+// Framework metadata, contract selection, actor authorization, and error policy
 // are supplied by adapters; this package has no Vine dependencies.
 package http
 
@@ -18,7 +18,7 @@ import (
 // HTTP method
 const RequestMethod = http.MethodPost
 
-// CheckRequestMethod validates the vRPC POST method.
+// CheckRequestMethod validates that a request uses the vRPC POST method.
 func CheckRequestMethod(req *http.Request) error {
 	if req.Method != RequestMethod {
 		return fmt.Errorf("invalid request method, expected %s", RequestMethod)
@@ -54,7 +54,8 @@ const (
 
 var supportedContentTypes = []string{ContentTypeJson, ContentTypeCbor}
 
-// MediaTypeOf extracts a media type, falling back to the value before a semicolon.
+// MediaTypeOf returns the media type of a Content-Type value, ignoring
+// parameters after a semicolon.
 func MediaTypeOf(value string) string {
 	mediaType, _, err := mime.ParseMediaType(strings.TrimSpace(value))
 	if err == nil {
@@ -237,12 +238,12 @@ func EncodeFields(pairs ...string) string {
 	return strings.Join(parts, ",")
 }
 
-// EncodeApp formats a validated client/server identity without owning its model.
+// EncodeApp formats a validated client or server identity as vRPC metadata.
 func EncodeApp(name, version, instanceID string) string {
 	return EncodeFields("name", name, "version", version, "instanceId", instanceID)
 }
 
-// EncodeTrace formats validated trace identifiers without owning their lifecycle.
+// EncodeTrace formats validated trace identifiers as vRPC metadata.
 func EncodeTrace(id, span string) string {
 	return EncodeFields("id", id, "span", span)
 }
@@ -300,8 +301,9 @@ func EncodeRequestOptionsToHeader(header http.Header, ctx context.Context) {
 // Request path
 var requestPathRegexp = regexp.MustCompile(`^/([\w.]+)/(\w+)$`)
 
-// ParseServiceAndMethodFromPath parses only the RPC path segment. Host-level prefixes such
-// as "/rpc/invoke" should be removed by the caller before the request reaches http transport.
+// ParseServiceAndMethodFromPath parses only the RPC path segment. Callers must
+// remove host-level prefixes such as "/rpc/invoke" before the request reaches
+// the HTTP transport.
 func ParseServiceAndMethodFromPath(path string) (serviceName string, methodName string, err error) {
 	ms := requestPathRegexp.FindStringSubmatch(path)
 	if ms == nil {

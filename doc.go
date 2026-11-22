@@ -1,6 +1,6 @@
 // Package vrpc implements a standalone HTTP client for the vRPC protocol.
-// It can call Vine Portal without starting a Vine application. Endpoint URLs
-// include the invocation prefix (for example https://api.example.com/invoke).
-// Clients are safe for concurrent calls when their transport is also safe for
-// concurrent use. Calls are never retried by this package.
+// It calls a Vine Portal endpoint without starting a Vine application. An
+// endpoint URL is the invocation prefix, for example
+// https://api.example.com/invoke. A client is safe for concurrent use when its
+// transport is also concurrency-safe. The package does not retry calls.
 package vrpc

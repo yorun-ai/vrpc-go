@@ -12,10 +12,10 @@ import (
 	rpchttp "go.yorun.ai/vrpc/transport/http"
 )
 
-// Option configures a standalone client. Endpoint includes the invocation prefix.
+// Option configures a standalone client. Endpoint is the invocation URL prefix.
 type Option struct {
 	Endpoint string
-	// Identity requires a name, version and instance UUID.
+	// Identity identifies the caller on each request.
 	Identity Identity
 	// Transport defaults to http.DefaultTransport. The caller owns its lifecycle.
 	Transport http.RoundTripper
@@ -131,7 +131,7 @@ func (client *Client) InvokeAs[T any](ctx context.Context, method MethodInfo, pa
 	return result, response, nil
 }
 
-// InvokeRaw calls an unregistered service/method using JSON and returns a dynamic result.
+// InvokeRaw calls an unregistered service and method using JSON and returns a dynamic result.
 func (client *Client) InvokeRaw(ctx context.Context, service, method string, params any, options ...InvokeOption) (any, *ResponseMetadata, error) {
 	path := "/" + service + "/" + method
 	if _, _, err := rpchttp.ParseServiceAndMethodFromPath(path); err != nil {

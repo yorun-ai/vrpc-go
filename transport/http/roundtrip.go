@@ -22,8 +22,8 @@ func (e *DecodeError) Unwrap() error {
 }
 
 // RoundTrip runs one prepared HTTP request and owns the response body lifetime.
-// It neither retries nor selects a network
-// transport: standalone clients and h2c/mTLS adapters supply their own do function.
+// It neither retries nor selects a network transport; standalone clients and
+// h2c/mTLS adapters supply their own do function.
 func RoundTrip[T any](request *http.Request, prepared func(), do func(*http.Request) (*http.Response, error), decode func(*http.Response) (T, error)) (T, error) {
 	var zero T
 	if prepared != nil {

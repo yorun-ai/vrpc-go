@@ -116,7 +116,7 @@ func ReadRequestBody(request *http.Request) ([]byte, error) {
 }
 
 // NewRequest assembles the common HTTP invocation from an encoded invocation envelope.
-// Adapters supply identity/auth headers after construction. path begins with '/'.
+// Adapters supply identity and authorization headers after construction. path begins with '/'.
 func NewRequest(ctx context.Context, endpoint, path string, body []byte, contentType, accept string) (*http.Request, error) {
 	request, err := http.NewRequestWithContext(ctx, RequestMethod, endpoint+path, bytes.NewReader(body))
 	if err != nil {
