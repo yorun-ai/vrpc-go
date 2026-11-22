@@ -38,7 +38,7 @@ client, err := vrpc.NewClient(vrpc.Option{
     Identity: vrpc.Identity{
         Name: "demo.client",
         Version: "1.0.0",
-        InstanceID: "123e4567-e89b-12d3-a456-426614174001",
+        InstanceID: uuid.MustParse("123e4567-e89b-12d3-a456-426614174001"),
     },
     Authorization: map[string]string{
         "key": token,
@@ -79,9 +79,10 @@ to `map[string]any`, arrays to `[]any`, and numbers to `float64`.
 On failure, `InvokeAs[T]` returns the zero value of `T` and `InvokeRaw` returns nil; metadata remains available
 when an HTTP response was received.
 
-Import `context`, `fmt` and `go.yorun.ai/vrpc`. The example uses the caller's `ctx` and `token`.
-Use your service's exact contract names. `Endpoint` includes the invocation prefix;
-the client appends `/<service>/<method>` and does not automatically add `/invoke`.
+Import `context`, `fmt`, `uuid` and `go.yorun.ai/vrpc`. The example uses the caller's `ctx` and `token`.
+Use your service's exact contract names. Set `Endpoint` to the invocation URL
+prefix, including `/invoke` when it is part of the route. The client appends
+`/<service>/<method>`.
 
 A complete command-line example is included:
 
@@ -95,10 +96,11 @@ go run ./examples/portal -endpoint https://api.example.com/invoke \
 
 ## Configuration and behavior
 
-`Identity.Name`, `Identity.Version` and `Identity.InstanceID` are required.
-Missing or invalid values cause client construction to fail.
-Use lowercase letters separated by dots for the name and a full semantic version.
-The instance UUID is stable for that client. Each call creates a trace and span;
+`Identity.Name` requires lowercase letters separated by dots, and
+`Identity.Version` requires a full semantic version. Use a stable
+`Identity.InstanceID` for each client.
+
+Each call creates a trace and span.
 `vrpc.WithTrace(parent)` preserves a parent trace ID and creates a child span.
 
 `Option.Timeout` defaults to 30 seconds. `vrpc.WithTimeout(duration)` overrides

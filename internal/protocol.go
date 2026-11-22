@@ -14,7 +14,7 @@ import (
 type Identity struct {
 	Name       string
 	Version    string
-	InstanceID string
+	InstanceID uuid.UUID
 }
 
 var namePattern = regexp.MustCompile(`^[a-z]+(?:\.[a-z]+)*$`)
@@ -22,22 +22,10 @@ var versionPattern = regexp.MustCompile(`^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[
 var statusPattern = regexp.MustCompile(`^[A-Z][A-Z0-9_]*$`)
 
 func EncodeIdentity(identity Identity) (string, error) {
-	if !namePattern.MatchString(identity.Name) {
-		return "", fmt.Errorf("vrpc: invalid identity name")
+	if err := validateIdentityNameAndVersion(identity.Name, identity.Version); err != nil {
+		return "", err
 	}
-	parts := versionPattern.FindStringSubmatch(identity.Version)
-	if parts == nil {
-		return "", fmt.Errorf("vrpc: invalid semantic version")
-	}
-	for part := range strings.SplitSeq(parts[4], ".") {
-		if len(part) > 1 && part[0] == '0' && strings.Trim(part, "0123456789") == "" {
-			return "", fmt.Errorf("vrpc: invalid prerelease version")
-		}
-	}
-	if _, err := uuid.Parse(identity.InstanceID); err != nil {
-		return "", fmt.Errorf("vrpc: invalid instance UUID: %w", err)
-	}
-	return rpchttp.EncodeApp(identity.Name, identity.Version, identity.InstanceID), nil
+	return rpchttp.EncodeApp(identity.Name, identity.Version, identity.InstanceID.String()), nil
 }
 
 func DecodeIdentity(value string) (Identity, error) {
@@ -45,13 +33,35 @@ func DecodeIdentity(value string) (Identity, error) {
 	if err != nil {
 		return Identity{}, err
 	}
-	identity := Identity{
-		Name:       fields["name"],
-		Version:    fields["version"],
-		InstanceID: fields["instanceId"],
+	name, version := fields["name"], fields["version"]
+	if err := validateIdentityNameAndVersion(name, version); err != nil {
+		return Identity{}, err
 	}
-	_, err = EncodeIdentity(identity)
-	return identity, err
+	instanceID, err := uuid.Parse(fields["instanceId"])
+	if err != nil {
+		return Identity{}, fmt.Errorf("vrpc: invalid instance UUID: %w", err)
+	}
+	return Identity{
+		Name:       name,
+		Version:    version,
+		InstanceID: instanceID,
+	}, nil
+}
+
+func validateIdentityNameAndVersion(name string, version string) error {
+	if !namePattern.MatchString(name) {
+		return fmt.Errorf("vrpc: invalid identity name")
+	}
+	parts := versionPattern.FindStringSubmatch(version)
+	if parts == nil {
+		return fmt.Errorf("vrpc: invalid semantic version")
+	}
+	for part := range strings.SplitSeq(parts[4], ".") {
+		if len(part) > 1 && part[0] == '0' && strings.Trim(part, "0123456789") == "" {
+			return fmt.Errorf("vrpc: invalid prerelease version")
+		}
+	}
+	return nil
 }
 
 type Trace struct {

@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"time"
+	"uuid"
 
 	"go.yorun.ai/vrpc"
 )
@@ -30,6 +31,10 @@ func run() error {
 	clientVersion := flag.String("client-version", "", "Client semantic version")
 	clientInstanceID := flag.String("client-instance-id", "", "Client instance UUID")
 	flag.Parse()
+	instanceID, err := uuid.Parse(*clientInstanceID)
+	if err != nil {
+		return fmt.Errorf("invalid -client-instance-id: %w", err)
+	}
 	authorization := map[string]string{}
 	if key := os.Getenv("PORTAL_KEY"); key != "" {
 		authorization["key"] = key
@@ -39,7 +44,7 @@ func run() error {
 		Identity: vrpc.Identity{
 			Name:       *clientName,
 			Version:    *clientVersion,
-			InstanceID: *clientInstanceID,
+			InstanceID: instanceID,
 		},
 		Endpoint:      *endpoint,
 		Timeout:       *timeout,

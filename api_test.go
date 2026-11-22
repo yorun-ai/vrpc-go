@@ -3,13 +3,15 @@ package vrpc_test
 import (
 	"context"
 	"errors"
-	"go.yorun.ai/vrpc"
-	rpchttp "go.yorun.ai/vrpc/transport/http"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"slices"
 	"testing"
+	"uuid"
+
+	"go.yorun.ai/vrpc"
+	rpchttp "go.yorun.ai/vrpc/transport/http"
 )
 
 type userResult struct {
@@ -152,7 +154,7 @@ func testClientIdentity() vrpc.Identity {
 	return vrpc.Identity{
 		Name:       "demo.client",
 		Version:    "1.0.0",
-		InstanceID: "123e4567-e89b-12d3-a456-426614174001",
+		InstanceID: uuid.MustParse("123e4567-e89b-12d3-a456-426614174001"),
 	}
 }
 

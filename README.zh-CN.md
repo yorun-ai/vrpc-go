@@ -38,7 +38,7 @@ client, err := vrpc.NewClient(vrpc.Option{
     Identity: vrpc.Identity{
         Name: "demo.client",
         Version: "1.0.0",
-        InstanceID: "123e4567-e89b-12d3-a456-426614174001",
+        InstanceID: uuid.MustParse("123e4567-e89b-12d3-a456-426614174001"),
     },
     Authorization: map[string]string{
         "key": token,
@@ -69,9 +69,9 @@ result, metadata, err := client.InvokeAs[User](ctx, methodInfo,
     struct { ID int64 `json:"id"` }{ID: 42})
 ```
 
-导入 `context`、`fmt` 和 `go.yorun.ai/vrpc`；示例的 `ctx`、`token` 由调用方提供。
-服务名、方法名和字段名应使用实际契约中的名称。`Endpoint` 包含调用前缀；客户端追加
-`/<service>/<method>`，不会自动添加 `/invoke`。
+导入 `context`、`fmt`、`uuid` 和 `go.yorun.ai/vrpc`。示例的 `ctx`、`token` 由调用方提供。
+服务名、方法名和字段名应使用实际契约中的名称。`Endpoint` 填写调用地址的前缀，
+路由含有 `/invoke` 时将其包含在内。客户端追加 `/<service>/<method>`。
 
 仓库提供完整的命令行示例：
 
@@ -93,9 +93,10 @@ go run ./examples/portal -endpoint https://api.example.com/invoke \
 
 ## 配置与行为
 
-`Identity.Name`、`Identity.Version` 和 `Identity.InstanceID` 必须显式提供。
-任一字段缺失或格式无效，创建客户端时直接返回错误。
-名称使用小写字母及点分隔，版本使用完整语义版本。每个 client 保持固定实例 UUID；每次调用生成 trace/span。
+`Identity.Name` 使用小写字母及点分隔，`Identity.Version` 使用完整语义版本。
+为每个客户端设置固定的 `Identity.InstanceID`。
+
+每次调用生成 trace 和 span。
 `vrpc.WithTrace(parent)` 保留父 trace ID，并创建新的调用 span。
 
 `Option.Timeout` 默认 30 秒，`vrpc.WithTimeout(duration)` 可覆盖单次调用；context 中更早的 deadline 优先。
